@@ -1,108 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-<base target="_top">
-<style>
-  body { font-family: 'Microsoft JhengHei', sans-serif; background: #FFF8F0; padding: 20px; }
-  .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-  .header { background: #FF6B35; color: white; padding: 20px; text-align: center; }
-  .content { padding: 20px; }
-  .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
-  .menu-item:hover { background: #fff3e0; }
-  .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
-  .price { color: #d32f2f; font-weight: bold; }
-  
-  .input-group { margin-top: 20px; padding-top: 20px; border-top: 2px dashed #ddd; }
-  input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-  
-  button { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
-  button:disabled { background: #ccc; }
-  
-  #msg { text-align: center; padding: 20px; color: green; font-weight: bold; display: none; }
-</style>
+  <base target="_top">
+  <style>
+    body { font-family: sans-serif; background: #FFF8F0; padding: 20px; max-width: 500px; margin: 0 auto; }
+    .header { background: #FF6B35; color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
+    .content { background: white; padding: 20px; border-radius: 0 0 10px 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .menu-item:hover { background: #fffbe6; }
+    .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
+    input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+    button { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-size: 1.2rem; margin-top: 20px; cursor: pointer; font-weight: bold; }
+    button:disabled { background: #ccc; }
+    #success-msg { display: none; text-align: center; color: green; font-weight: bold; padding: 20px; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="header">
-    <h2 id="shop-name">載入中...</h2>
-  </div>
-  
-  <div class="content" id="order-form">
-    <div id="menu-list"></div>
-    
-    <div class="input-group">
-      <input type="text" id="username" placeholder="你的名字 (必填)">
-      <input type="text" id="note" placeholder="備註 (飯少/不蔥)">
-      <button id="btn-submit" onclick="submitOrder()">🚀 確認送出</button>
-    </div>
-  </div>
-  
-  <div id="msg">✅ 訂購成功！已寫入 Excel。</div>
+<div class="header">
+  <h2 id="menu-title">載入中...</h2>
 </div>
 
-<script>
-  var currentMenuId = "";
-  var selectedItem = "";
-  var selectedPrice = "";
+<div class="content" id="form-area">
+  <div id="menu-list"></div>
+  
+  <div style="margin-top:20px; border-top:2px dashed #eee; padding-top:10px;">
+    <input type="text" id="username" placeholder="你的名字 (必填)">
+    <input type="text" id="note" placeholder="備註 (選填)">
+    <button id="btn-submit" onclick="doSubmit()">🚀 確認送出</button>
+  </div>
+</div>
 
+<div id="success-msg">✅ 訂購成功！</div>
+
+<script>
+  let currentMenuId = "";
+  let selectedItem = null;
+
+  // 初始化
   window.onload = function() {
-    var urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
     currentMenuId = urlParams.get('id');
     
-    if(!currentMenuId) {
-       document.querySelector('.container').innerHTML = "<h3 style='padding:20px;text-align:center'>👋 請使用管理員提供的連結進入點餐</h3>";
-       return;
+    if (!currentMenuId) {
+      document.body.innerHTML = "<h3 style='text-align:center'>請使用管理員提供的連結進入</h3>";
+      return;
     }
-    
-    // 呼叫後端讀取菜單
+
     google.script.run.withSuccessHandler(renderMenu).apiGetMenu(currentMenuId);
   };
 
   function renderMenu(res) {
-    if(res.status !== 'success') {
-      document.getElementById('shop-name').innerText = "❌ " + res.message;
+    if (res.status === 'error') {
+      document.getElementById('menu-title').innerText = "❌ " + res.message;
       return;
     }
     
-    document.getElementById('shop-name').innerText = "🍱 " + res.title.split('_')[1];
-    var list = document.getElementById('menu-list');
+    document.getElementById('menu-title').innerText = "🍱 " + res.title;
+    const list = document.getElementById('menu-list');
     
-    res.items.forEach(function(item) {
-      var div = document.createElement('div');
+    res.items.forEach(item => {
+      const div = document.createElement('div');
       div.className = 'menu-item';
-      div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
-      div.onclick = function() { selectItem(this, item.name, item.price); };
+      div.innerHTML = `<span>${item.name}</span> <span style="color:#d32f2f;font-weight:bold">$${item.price}</span>`;
+      div.onclick = function() { 
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        div.classList.add('active');
+        selectedItem = item;
+      };
       list.appendChild(div);
     });
   }
 
-  function selectItem(el, name, price) {
-    document.querySelectorAll('.menu-item').forEach(d => d.classList.remove('active'));
-    el.classList.add('active');
-    selectedItem = name;
-    selectedPrice = price;
-  }
+  function doSubmit() {
+    const name = document.getElementById('username').value;
+    const note = document.getElementById('note').value;
+    
+    if (!name || !selectedItem) {
+      alert("請輸入名字並選擇一個餐點！");
+      return;
+    }
 
-  function submitOrder() {
-    var name = document.getElementById('username').value;
-    var note = document.getElementById('note').value;
-    
-    if(!name || !selectedItem) return alert("請輸入名字並選擇餐點");
-    
-    var btn = document.getElementById('btn-submit');
+    const btn = document.getElementById('btn-submit');
     btn.disabled = true;
     btn.innerText = "傳送中...";
-    
+
     google.script.run.withSuccessHandler(function() {
-       document.getElementById('order-form').style.display = 'none';
-       document.getElementById('msg').style.display = 'block';
+      document.getElementById('form-area').style.display = 'none';
+      document.getElementById('success-msg').style.display = 'block';
     }).apiSubmitOrder({
-       menuId: currentMenuId,
-       name: name,
-       item: selectedItem,
-       price: selectedPrice,
-       note: note
+      menuId: currentMenuId,
+      name: name,
+      note: note,
+      item: selectedItem.name,
+      price: selectedItem.price
     });
   }
 </script>
