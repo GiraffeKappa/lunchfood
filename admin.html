@@ -1,131 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-<base target="_top">
-<style>
-  body { font-family: 'Microsoft JhengHei', sans-serif; background: #f4f7f6; color: #333; padding: 20px; max-width: 600px; margin: 0 auto; }
-  h2 { color: #FF6B35; text-align: center; border-bottom: 2px solid #FF6B35; padding-bottom: 10px; }
-  .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  
-  input, textarea, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-  button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-  
-  .btn-main { background: #FF6B35; color: white; font-size: 1.1rem; }
-  .btn-main:disabled { background: #ccc; }
-  .btn-sec { background: #eee; color: #333; }
-  .btn-del { background: #ffebee; color: red; width: auto; padding: 5px 10px; margin: 0; }
-  
-  .item-row { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
-  .item-row input { margin: 0; }
-  
-  #link-box { display: none; background: #e8f5e9; padding: 15px; border-radius: 5px; word-break: break-all; margin-top: 15px; }
-</style>
+  <base target="_top">
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; max-width: 600px; margin: 0 auto; }
+    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h2 { color: #FF6B35; text-align: center; border-bottom: 2px solid #FF6B35; padding-bottom: 10px; }
+    label { font-weight: bold; display: block; margin-top: 15px; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+    button { width: 100%; padding: 12px; margin-top: 15px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; font-size: 1rem; }
+    .btn-main { background: #FF6B35; color: white; }
+    .btn-main:disabled { background: #ccc; }
+    .btn-sec { background: #eee; color: #333; margin-top: 5px; }
+    #result-area { display: none; margin-top: 20px; background: #e8f5e9; padding: 15px; border-radius: 5px; word-break: break-all; }
+    .item-preview { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
+  </style>
 </head>
 <body>
 
-<h2>🤴 食神控制中心</h2>
-
 <div class="card">
-  <label>📂 快速載入店家</label>
-  <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
-
-  <hr style="border:0; border-top:1px dashed #ddd; margin: 15px 0;">
-
-  <label>🏠 店家名稱</label>
-  <input type="text" id="menu-title" placeholder="例如：週五吃炸雞">
+  <h2>🤴 食神控制中心</h2>
   
-  <label>✨ 智慧貼上 (菜名 價格)</label>
-  <textarea id="smart-area" rows="4" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
-  <button class="btn-sec" onclick="smartParse()">⚡️ 一鍵轉換</button>
-
-  <div id="item-list"></div>
-  <button class="btn-sec" onclick="addItem()">+ 手動新增一列</button>
+  <label>店家名稱</label>
+  <input type="text" id="shop-title" placeholder="例如：週五吃雞腿">
   
-  <div style="margin: 15px 0;">
-    <input type="checkbox" id="save-pool" style="width:auto;" checked> 
-    <label for="save-pool">同時存入便當池</label>
+  <label>快速貼上菜單 (菜名 價格)</label>
+  <textarea id="paste-area" rows="5" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
+  <button class="btn-sec" onclick="doSmartParse()">⚡️ 一鍵轉換</button>
+  
+  <label>預覽菜單</label>
+  <div id="preview-list" style="background:#fafafa; padding:10px; min-height:50px;">
+    <span style="color:#999">等待輸入...</span>
   </div>
 
-  <button class="btn-main" id="btn-pub" onclick="publish()">🚀 發布並產生連結</button>
+  <button class="btn-main" id="btn-pub" onclick="doPublish()">🚀 發布並產生連結</button>
   
-  <div id="link-box"></div>
+  <div id="result-area"></div>
 </div>
 
 <script>
-  // 初始化
-  window.onload = function() {
-    google.script.run.withSuccessHandler(renderPool).apiGetPool();
-  };
+  let menuItems = [];
 
-  function renderPool(list) {
-    var sel = document.getElementById('pool-select');
-    sel.innerHTML = '<option value="">-- 請選擇 --</option>';
-    list.forEach(function(shop, idx) {
-      var opt = document.createElement('option');
-      opt.text = shop.title;
-      opt.value = JSON.stringify(shop.items);
-      sel.add(opt);
-    });
-  }
-
-  function loadFromPool() {
-    var sel = document.getElementById('pool-select');
-    if(!sel.value) return;
-    document.getElementById('menu-title').value = sel.options[sel.selectedIndex].text;
-    var items = JSON.parse(sel.value);
-    document.getElementById('item-list').innerHTML = '';
-    items.forEach(function(item){ addItem(item.name, item.price); });
-  }
-
-  // --- 強力版：智慧辨識 ---
-  function smartParse() {
-    var textArea = document.getElementById('smart-area');
-    var text = textArea.value;
+  // 一鍵轉換邏輯
+  function doSmartParse() {
+    const text = document.getElementById('paste-area').value;
+    const lines = text.split('\n');
+    menuItems = []; // 重置
     
-    if(!text.trim()) {
-       alert("⚠️ 請先貼上菜單文字喔！");
-       return;
-    }
-    
-    var lines = text.split('\n'); // 依換行切割
-    var count = 0;
-    
-    // 清空目前的列表
-    document.getElementById('item-list').innerHTML = ''; 
-    
-    lines.forEach(function(line) {
-      var cleanLine = line.trim();
-      if(!cleanLine) return; // 跳過空行
-
-      // 1. 抓取行內的所有數字
-      var matches = cleanLine.match(/(\d+)/g); 
-      
-      if(matches) {
-        // 策略：通常價格都在最後面 (例如：排骨飯 100)，但也可能在最前面
-        // 這裡我們取「最後一個出現的數字」當作價格
-        var price = matches[matches.length - 1]; 
-        
-        // 2. 把價格從字串中挖掉，剩下的就是菜名
-        var name = cleanLine.replace(price, '')
-                            .replace(/[$.:：元NT\s]/g, '') // 移除錢字符號和多餘空白
-                            .trim();
-
-        // 3. 只有當 菜名 和 價格 都有抓到時才新增
-        if(name && price) {
-          addItem(name, price);
-          count++;
+    lines.forEach(line => {
+      const clean = line.trim();
+      if (!clean) return;
+      // 抓數字
+      const match = clean.match(/(\d+)/g);
+      if (match) {
+        const price = match[match.length - 1]; // 取最後一個數字當價格
+        const name = clean.replace(price, '').replace(/[$.:：]/g, '').trim();
+        if (name && price) {
+          menuItems.push({ name: name, price: price });
         }
       }
     });
+    
+    renderPreview();
+  }
 
-    if(count > 0) {
-      textArea.value = ''; // 成功後清空輸入框
-      // alert("✅ 成功辨識 " + count + " 道菜！"); // (嫌吵可註解掉)
-    } else {
-      alert("❌ 無法辨識內容！\n\n請確認格式是否包含數字，例如：\n排骨飯 100\n雞腿飯 110");
+  // 顯示預覽
+  function renderPreview() {
+    const div = document.getElementById('preview-list');
+    if (menuItems.length === 0) {
+      div.innerHTML = '<span style="color:#999">無法辨識，請確認格式</span>';
+      return;
     }
+    div.innerHTML = '';
+    menuItems.forEach(item => {
+      div.innerHTML += `<div class="item-preview"><span>${item.name}</span> <b>$${item.price}</b></div>`;
+    });
+  }
+
+  // 發布
+  function doPublish() {
+    const title = document.getElementById('shop-title').value;
+    if (!title || menuItems.length === 0) {
+      alert("請輸入店名並至少新增一道菜！");
+      return;
+    }
+
+    const btn = document.getElementById('btn-pub');
+    btn.disabled = true;
+    btn.innerText = "正在建立中...";
+
+    // 呼叫後端
+    google.script.run
+      .withSuccessHandler(function(res) {
+        // 取得當前網址並加上 ID
+        google.script.run.withSuccessHandler(function(url) {
+          const finalLink = url + "?id=" + encodeURIComponent(res.menuId);
+          
+          document.getElementById('result-area').style.display = 'block';
+          document.getElementById('result-area').innerHTML = 
+            `✅ 發布成功！<br>請複製連結給同事：<br><br><a href="${finalLink}" target="_blank" style="color:red;font-weight:bold;">${finalLink}</a>`;
+          
+          btn.innerText = "發布完成";
+        }).getScriptUrl();
+      })
+      .apiCreateMenu({ title: title, items: menuItems });
   }
 </script>
 </body>
 </html>
-
