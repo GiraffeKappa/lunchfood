@@ -112,16 +112,59 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請把下面的網址換成你自己的 Google Apps Script 網址 ⚠️⚠️⚠️
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkVx4Cb1bIGtz7tepKXA5KK-d29hrlbRox9ZsKx4BxLtPVSL915tnyMxfhPN3S_NWi/exec"; 
+    // ⚠️ 這裡也要填入正確的 GAS 網址
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxqBOM8VD1mZwXGfctdItrDxWs8AIxjZ38Ye9BgEPvmBzp_V2SSCaXAAAbt_fCiYI/exec"; 
 
+    let currentMenuId = ""; // 用來存現在是哪個菜單
     let selectedItem = "";
     let selectedPrice = 0;
 
+    // 頁面載入時，抓取網址上的 ID
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentMenuId = urlParams.get('id');
+
+        if (!currentMenuId) {
+            document.querySelector('.menu-section').innerHTML = "<h3>⚠️ 無法載入菜單</h3><p>網址缺少 ID，請由管理員提供的連結進入。</p>";
+            return;
+        }
+
+        loadMenu(currentMenuId);
+    };
+
+    // 向 GAS 請求菜單資料
+    function loadMenu(menuId) {
+        document.querySelector('.menu-section').innerHTML = "<h3>⏳ 菜單載入中...</h3>";
+        
+        fetch(`${SCRIPT_URL}?action=get_menu&id=${encodeURIComponent(menuId)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                // 更新標題
+                document.querySelector('.header h1').innerText = `🍱 今天吃：${data.title.split('_')[1]}`; // 去掉時間戳記
+                
+                // 動態產生菜單 HTML
+                const menuContainer = document.querySelector('.menu-section');
+                menuContainer.innerHTML = '<h3>1. 選擇餐點</h3>'; // 清空 loading
+                
+                data.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'menu-item';
+                    div.onclick = function() { selectFood(item.name, item.price, this); };
+                    div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
+                    menuContainer.appendChild(div);
+                });
+            } else {
+                document.querySelector('.menu-section').innerHTML = `<h3>❌ 錯誤</h3><p>${data.message}</p>`;
+            }
+        })
+        .catch(err => {
+            document.querySelector('.menu-section').innerHTML = "<h3>❌ 連線失敗</h3><p>請檢查網路</p>";
+        });
+    }
+
     function selectFood(name, price, element) {
-        // 清除其他選取狀態
         document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
-        // 設定當前選取
         element.classList.add('selected');
         selectedItem = name;
         selectedPrice = price;
@@ -135,39 +178,39 @@
         if (!name) { alert("請輸入名字！"); return; }
         if (!selectedItem) { alert("請選擇一份餐點！"); return; }
 
-        // 鎖定按鈕避免重複按
         btn.disabled = true;
         btn.innerText = "資料傳送中...";
 
-        // 準備要傳送的資料
         const orderData = {
+            action: "order", // 告訴後端這是訂單
+            menuId: currentMenuId, // 重要！告訴後端要寫入哪個分頁
             name: name,
             item: selectedItem,
             price: selectedPrice,
             note: note
         };
 
-        // 使用 fetch 送出資料 (no-cors 模式)
+        // 這裡不需要 no-cors，因為後端現在支援 CORS 回傳
         fetch(SCRIPT_URL, {
             method: "POST",
-            mode: "no-cors", 
-            headers: {
-                "Content-Type": "application/json"
-            },
             body: JSON.stringify(orderData)
-        }).then(response => {
-            // 因為用 no-cors，我們假設送出即成功
-            document.querySelector('.input-section').style.display = 'none';
-            document.querySelector('.menu-section').style.display = 'none';
-            document.getElementById('success-msg').style.display = 'block';
+        }).then(res => res.json())
+        .then(json => {
+            if (json.status === "success") {
+                document.querySelector('.input-section').style.display = 'none';
+                document.querySelector('.menu-section').style.display = 'none';
+                document.getElementById('success-msg').style.display = 'block';
+            } else {
+                alert("訂購失敗：" + json.message);
+                btn.disabled = false;
+            }
         }).catch(error => {
-            console.error(error);
             alert("發生錯誤，請稍後再試");
             btn.disabled = false;
-            btn.innerText = "🚀 確認送出訂單";
         });
     }
 </script>
 
 </body>
+
 </html>
