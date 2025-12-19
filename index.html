@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食神點餐單 - 轉角阿姨便當</title>
+    <style>
+        /* --- 樣式設定 (保持原本風格) --- */
+        :root {
+            --appetite-orange: #FF6B35;
+            --bg-cream: #FFF8F0;
+            --text-dark: #4A2C2A;
+        }
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-cream);
+            color: var(--text-dark);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center;
+        }
+        .container {
+            width: 100%; max-width: 500px;
+            background: white; border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;
+        }
+        .header {
+            background: var(--appetite-orange); color: white;
+            padding: 20px; text-align: center;
+        }
+        .header h1 { margin: 0; font-size: 1.5rem; }
+        
+        /* 菜單區 */
+        .menu-section { padding: 20px; }
+        .menu-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer;
+            transition: background 0.2s; border-radius: 8px;
+        }
+        .menu-item:hover { background-color: #fff3e0; }
+        .menu-item.selected { background-color: #ffe0b2; border: 2px solid var(--appetite-orange); }
+        .price { color: #d32f2f; font-weight: bold; }
+
+        /* 輸入區 */
+        .input-section { padding: 20px; background: #fafafa; border-top: 2px dashed #ddd; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 10px; border: 1px solid #ccc;
+            border-radius: 8px; box-sizing: border-box; font-size: 1rem;
+        }
+
+        /* 按鈕 */
+        .submit-btn {
+            width: 100%; padding: 15px; background: var(--text-dark);
+            color: #F7C800; border: none; border-radius: 50px;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer;
+        }
+        .submit-btn:disabled { background: #ccc; color: #666; cursor: not-allowed; }
+
+        /* 成功提示 */
+        #success-msg {
+            display: none; text-align: center; padding: 20px;
+            color: green; font-weight: bold; background: #e8f5e9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🍱 今天吃：轉角阿姨便當</h1>
+        <p>請點選餐點並送出，方便統計！</p>
+    </div>
+
+    <div class="menu-section">
+        <h3>1. 選擇餐點</h3>
+        
+        <div class="menu-item" onclick="selectFood('招牌排骨飯', 100, this)">
+            <div>招牌排骨飯</div><div class="price">$100</div>
+        </div>
+        
+        <div class="menu-item" onclick="selectFood('酥炸雞腿飯', 110, this)">
+            <div>酥炸雞腿飯</div><div class="price">$110</div>
+        </div>
+        
+        <div class="menu-item" onclick="selectFood('古早味滷肉飯', 55, this)">
+            <div>古早味滷肉飯</div><div class="price">$55</div>
+        </div>
+        
+        <div class="menu-item" onclick="selectFood('香煎鯖魚飯', 120, this)">
+            <div>香煎鯖魚飯</div><div class="price">$120</div>
+        </div>
+    </div>
+
+    <div class="input-section">
+        <h3>2. 填寫資料</h3>
+        <div class="form-group">
+            <label>你的名字 (必填)</label>
+            <input type="text" id="username" placeholder="例：小明">
+        </div>
+        <div class="form-group">
+            <label>備註 (選填)</label>
+            <input type="text" id="note" placeholder="例：不要香菜、飯少">
+        </div>
+        
+        <button class="submit-btn" id="btnSubmit" onclick="submitOrder()">🚀 確認送出訂單</button>
+    </div>
+
+    <div id="success-msg">
+        ✅ 訂購成功！<br>已寫入食神帳本
+    </div>
+</div>
+
+<script>
+    // ⚠️⚠️⚠️ 請把下面的網址換成你自己的 Google Apps Script 網址 ⚠️⚠️⚠️
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkVx4Cb1bIGtz7tepKXA5KK-d29hrlbRox9ZsKx4BxLtPVSL915tnyMxfhPN3S_NWi/exec"; 
+
+    let selectedItem = "";
+    let selectedPrice = 0;
+
+    function selectFood(name, price, element) {
+        // 清除其他選取狀態
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
+        // 設定當前選取
+        element.classList.add('selected');
+        selectedItem = name;
+        selectedPrice = price;
+    }
+
+    function submitOrder() {
+        const name = document.getElementById('username').value;
+        const note = document.getElementById('note').value;
+        const btn = document.getElementById('btnSubmit');
+
+        if (!name) { alert("請輸入名字！"); return; }
+        if (!selectedItem) { alert("請選擇一份餐點！"); return; }
+
+        // 鎖定按鈕避免重複按
+        btn.disabled = true;
+        btn.innerText = "資料傳送中...";
+
+        // 準備要傳送的資料
+        const orderData = {
+            name: name,
+            item: selectedItem,
+            price: selectedPrice,
+            note: note
+        };
+
+        // 使用 fetch 送出資料 (no-cors 模式)
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors", 
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(orderData)
+        }).then(response => {
+            // 因為用 no-cors，我們假設送出即成功
+            document.querySelector('.input-section').style.display = 'none';
+            document.querySelector('.menu-section').style.display = 'none';
+            document.getElementById('success-msg').style.display = 'block';
+        }).catch(error => {
+            console.error(error);
+            alert("發生錯誤，請稍後再試");
+            btn.disabled = false;
+            btn.innerText = "🚀 確認送出訂單";
+        });
+    }
+</script>
+
+</body>
+</html>

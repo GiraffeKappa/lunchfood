@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡️ 食神控制中心</title>
+    <style>
+        /* --- 🎨 淺色主題配色 --- */
+        :root {
+            --bg-light: #f4f7f6;      /* 整體背景 */
+            --card-bg: #ffffff;       /* 卡片背景 */
+            --text-main: #333333;     /* 主要文字 */
+            --text-sub: #666666;      /* 次要文字 */
+            --gold: #F7C800;          /* 強調色 (金) */
+            --orange: #FF6B35;        /* 強調色 (橘) */
+            --header-bg: #ffffff;     /* 標題列背景 */
+            --nav-bg: #ffffff;        /* 導覽列背景 */
+            --border-color: #e0e0e0;  /* 邊框顏色 */
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            margin: 0; padding: 0;
+            padding-bottom: 80px;
+        }
+
+        /* 頂部數據列 */
+        .dashboard-header {
+            background: var(--header-bg);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--orange);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .total-stats { display: flex; justify-content: space-around; margin-top: 15px; }
+        .stat-box .num { font-size: 1.8rem; font-weight: 800; color: var(--orange); }
+        .stat-box .label { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 通用容器與卡片 */
+        .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s; max-width: 800px; margin: 0 auto; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+        .card-box { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h3.tab-title { color: var(--orange); margin-top: 0; border-left: 4px solid var(--orange); padding-left: 10px;}
+<div style="margin: 15px 0;">
+    <input type="checkbox" id="save-pool-check" checked>
+    <label for="save-pool-check" style="cursor:pointer; color:var(--text-main);">同時將此菜單存入「便當池」，下次可直接選用</label>
+</div>
+        /* --- 新增：發布團購 (Create Menu) --- */
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-main); }
+        .input-field { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 1rem; transition: border 0.3s;}
+        .input-field:focus { border-color: var(--orange); outline: none; }
+        
+        .menu-editor-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .menu-editor-item input[type="text"] { flex-grow: 2; }
+        .menu-editor-item input[type="number"] { flex-grow: 1; max-width: 100px; }
+        .btn-remove { background: #ffebee; color: #d32f2f; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+        
+        .btn-add { background: var(--bg-light); color: var(--text-main); border: 2px dashed var(--border-color); width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: all 0.3s;}
+        .btn-add:hover { border-color: var(--orange); color: var(--orange); background: #fff5f0;}
+
+        .btn-submit { background: var(--orange); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-size: 1.2rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3); transition: transform 0.2s;}
+        .btn-submit:hover { transform: translateY(-2px); background: #e55a2b; }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; transform: none;}
+
+        #result-link-box { display: none; margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; word-break: break-all; color: #2e7d32;}
+
+        /* --- 其他分頁樣式 (配合淺色主題調整) --- */
+        .order-card { background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);}
+        .order-info h4 { margin: 0 0 5px 0; color: var(--text-main); }
+        .order-info p { margin: 0; font-size: 0.9rem; color: var(--text-sub); }
+        
+        .ledger-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border-color); background: var(--card-bg);}
+        .pay-status { padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; border: 1px solid var(--text-sub); color: var(--text-sub); background: #fff;}
+        .pay-status.paid { background: var(--success-green, #4CAF50); color: white; border: none; font-weight: bold; }
+
+        .prompter-box { background: var(--card-bg); padding: 20px; border-radius: 10px; min-height: 300px; border: 1px solid var(--border-color);}
+        .prompter-line { font-size: 2rem; margin-bottom: 15px; border-bottom: 2px dashed var(--border-color); padding-bottom: 10px; color: var(--text-main); font-weight: bold;}
+        .prompter-qty { color: var(--orange); font-weight: 900; font-size: 3rem; float: right;}
+
+        /* 底部導覽列 */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--nav-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color);}
+        .nav-item { text-align: center; color: var(--text-sub); cursor: pointer; flex: 1; transition: color 0.3s;}
+        .nav-item.active { color: var(--orange); }
+        .nav-icon { font-size: 1.6rem; display: block; margin-bottom: 4px;}
+        .nav-text { font-size: 0.7rem; font-weight: bold;}
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-header">
+        <h2 style="margin:0; color: var(--text-main);">🤴 食神控制中心</h2>
+        <div class="total-stats">
+            <div class="stat-box">
+                <div class="num" id="total-count">0</div>
+                <div class="label">總份數</div>
+            </div>
+            <div class="stat-box">
+                <div class="num" id="total-price">$0</div>
+                <div class="label">總金額</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-create" class="tab-content active">
+        <h3 class="tab-title">🚀 建立新團購便當站</h3>
+        <div class="card-box">
+            
+            <div class="input-group">
+                <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+                    <label style="font-weight:bold; color:var(--text-sub);">📂 從便當池快速載入 (未實作)</label>
+                    <select id="pool-select" class="input-field" disabled>
+                        <option value="">(功能開發中)</option>
+                    </select>
+                </div>
+
+                <label for="menu-title">店家名稱</label>
+                <input type="text" id="menu-title" class="input-field" placeholder="例如：週五吃炸雞">
+            </div>
+
+            <div style="background:#fff3e0; padding:15px; border-radius:8px; margin-bottom:20px; border:1px dashed var(--orange);">
+                <label style="font-weight:bold; color:var(--orange);">✨ 懶人模式：智慧貼上</label>
+                <p style="font-size:0.8rem; margin:5px 0; color:#666;">
+                    請貼上文字 (格式：菜名 價格，一行一個)
+                </p>
+                <textarea id="smart-paste-area" class="input-field" rows="4" placeholder="範例：
+招牌排骨飯 100
+酥炸雞腿飯 110"></textarea>
+                <button class="btn-add" style="background:var(--orange); color:white; border:none; margin-top:10px;" onclick="smartParse()">⚡️ 一鍵轉換為菜單</button>
+            </div>
+            
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">菜單項目 (可手動調整)</label>
+            <div id="menu-editor-container"></div>
+            
+            <button class="btn-add" onclick="addMenuItem()">+ 手動新增一列</button>
+            <button class="btn-submit" id="btn-publish" onclick="publishMenu()">確認發布，產生連結！</button>
+
+            <div id="result-link-box"></div>
+        </div>
+    </div>
+
+    <div id="tab-group" class="tab-content">
+        <h3 class="tab-title">📋 即時訂單監控</h3>
+        <div id="order-list" class="card-box" style="min-height:200px; color: var(--text-sub);">
+            請先選擇要監控的團購活動... (此功能將在下一版完善)
+        </div>
+    </div>
+
+    <div id="tab-ledger" class="tab-content">
+        <h3 class="tab-title">💰 收款直覺帳本</h3>
+        <div id="ledger-list" class="card-box" style="padding:0;">
+            <div class="ledger-row">
+                <div><span style="font-weight:bold;">範例小明</span><span style="color:var(--text-sub); margin-left:10px;">$100</span></div>
+                <div class="pay-status paid">已付</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-prompter" class="tab-content">
+        <h3 class="tab-title">📞 電話提詞機</h3>
+        <div class="prompter-box" id="prompter-list">
+             <div class="prompter-line"><span>招牌排骨飯</span><span class="prompter-qty">5</span></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('tab-create', this)">
+            <span class="nav-icon">🚀</span><span class="nav-text">發布</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-group', this)">
+            <span class="nav-icon">📋</span><span class="nav-text">監控</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-ledger', this)">
+            <span class="nav-icon">💰</span><span class="nav-text">帳本</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-prompter', this)">
+            <span class="nav-icon">📞</span><span class="nav-text">提詞</span>
+        </div>
+    </div>
+
+<script>
+    // ⚠️ 請填入剛剛複製的 /exec 結尾網址 (絕對不能是 /library/)
+    const SCRIPT_URL = "https://script.google.com/macros/s/您的正確ID/exec"; 
+    
+    // ⚠️ User 頁面網址
+    const USER_PAGE_URL = "https://lunchfood.netlify.app/"; 
+
+    window.onload = function() { fetchPool(); };
+
+    // 1. 智慧貼上 (已修復)
+    function smartParse() {
+        const rawText = document.getElementById('smart-paste-area').value;
+        if (!rawText.trim()) { alert("請先貼上文字！"); return; }
+        const lines = rawText.split('\n');
+        
+        document.getElementById('menu-editor-container').innerHTML = ''; // 清空
+        
+        let count = 0;
+        lines.forEach(line => {
+            let cleanLine = line.trim();
+            if (!cleanLine) return;
+            // 抓取最後一個數字當價格
+            const priceMatch = cleanLine.match(/(\d+)/g); 
+            if (priceMatch) {
+                const price = priceMatch[priceMatch.length - 1];
+                let name = cleanLine.replace(price, '').replace(/[$.元NT...:：]/g, '').trim();
+                if (name && price) {
+                    addMenuItem(name, price);
+                    count++;
+                }
+            }
+        });
+        if(count === 0) alert("無法辨識，請確認格式 (例如：排骨飯 100)");
+        else document.getElementById('smart-paste-area').value = '';
+    }
+
+    // 2. 發布菜單 (已修復)
+    function publishMenu() {
+        const title = document.getElementById('menu-title').value;
+        const saveToPool = document.getElementById('save-pool-check').checked;
+        const items = [];
+        
+        document.querySelectorAll('.menu-editor-item').forEach(el => {
+            const name = el.querySelector('.item-name').value;
+            const price = el.querySelector('.item-price').value;
+            if (name && price) items.push({ name, price: parseInt(price) });
+        });
+
+        if (!title || items.length === 0) { alert("請輸入店名並至少新增一道菜！"); return; }
+
+        const btn = document.getElementById('btn-publish');
+        btn.disabled = true;
+        btn.innerText = "連線中...";
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'create_menu', title, items, saveToPool })
+        })
+        .then(res => res.json())
+        .then(json => {
+            if(json.status === 'success') {
+                btn.innerText = "發布完成！";
+                const link = `${USER_PAGE_URL}?id=${encodeURIComponent(json.menuId)}`;
+                document.getElementById('result-link-box').style.display = 'block';
+                document.getElementById('result-link-box').innerHTML = 
+                    `✅ 發布成功！<br><a href="${link}" target="_blank" style="font-size:1.2rem;color:red;">${link}</a>`;
+                if(saveToPool) setTimeout(fetchPool, 1000);
+            } else {
+                alert("錯誤：" + json.message);
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            alert("連線失敗，請檢查網址是否正確 (必須是 /exec 結尾)");
+            btn.disabled = false;
+        });
+    }
+
+    // 3. 讀取便當池
+    function fetchPool() {
+        const select = document.getElementById('pool-select');
+        fetch(`${SCRIPT_URL}?action=get_pool`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                select.innerHTML = '<option value="">-- 快速載入 --</option>';
+                data.data.forEach((shop, i) => {
+                    let opt = new Option(shop.title, i);
+                    opt.dataset.items = JSON.stringify(shop.items);
+                    select.add(opt);
+                });
+                select.disabled = false;
+            }
+        });
+    }
+
+    function loadFromPool() {
+        const select = document.getElementById('pool-select');
+        if(!select.value) return;
+        const opt = select.options[select.selectedIndex];
+        document.getElementById('menu-title').value = opt.text;
+        document.getElementById('menu-editor-container').innerHTML = '';
+        JSON.parse(opt.dataset.items).forEach(item => addMenuItem(item.name, item.price));
+    }
+
+    function addMenuItem(name='', price='') {
+        const div = document.createElement('div');
+        div.className = 'menu-editor-item';
+        div.innerHTML = `<input type="text" class="input-field item-name" value="${name}" placeholder="菜名">
+                         <input type="number" class="input-field item-price" value="${price}" placeholder="價格">
+                         <button class="btn-remove" onclick="this.parentElement.remove()">×</button>`;
+        document.getElementById('menu-editor-container').appendChild(div);
+    }
+    
+    function switchTab(id, el) { /* 保持原樣 */ 
+        document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+</script>
+</body>
