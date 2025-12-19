@@ -3,110 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤴 食神後台 (GitHub版)</title>
+    <title>🤴 食神後台 (收款版)</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #FF6B35; border-bottom: 2px solid #FF6B35; padding-bottom: 15px; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 500px; }
+        
+        /* 分頁按鈕樣式 */
+        .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; }
+        .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        h2 { text-align: center; color: #FF6B35; margin-top: 0; }
         label { display: block; margin: 15px 0 5px; font-weight: bold; color: #333; }
-        input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        
         .btn-main { background: #FF6B35; color: white; }
-        .btn-main:hover { background: #e55a2b; }
         .btn-sec { background: #e4e6eb; color: #333; }
         .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
         .del-btn { background: #ffebee; color: red; width: auto; padding: 0 15px; }
         #result-box { display: none; background: #e8f5e9; padding: 15px; margin-top: 20px; border-radius: 8px; word-break: break-all; }
+
+        /* 查帳列表樣式 */
+        .order-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+        .order-info { flex-grow: 1; }
+        .order-name { font-weight: bold; font-size: 1.1rem; }
+        .order-detail { color: #666; font-size: 0.9rem; }
+        .pay-btn { width: auto; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; margin: 0; }
+        .status-unpaid { background: #eee; color: #666; }
+        .status-paid { background: #4CAF50; color: white; }
+        .summary-box { background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #d84315; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>⚡️ 天龍人訂餐系統</h2>
-    
-    <label>📂 從便當池載入</label>
-    <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
-
-    <label>🏠 店家名稱</label>
-    <input type="text" id="shop-title" placeholder="例如：快樂便當">
-
-    <label>📝 智慧貼上 (菜名 價格)</label>
-    <textarea id="paste-area" rows="4" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
-    <button class="btn-sec" onclick="smartParse()">🪄 一鍵轉換</button>
-
-    <label>📋 菜單預覽</label>
-    <div id="item-list"></div>
-    <button class="btn-sec" onclick="addItem()">+ 手動新增</button>
-    
-    <div style="margin-top:15px;">
-        <input type="checkbox" id="save-pool" checked style="width:auto;"> 
-        <label for="save-pool" style="display:inline;">存入便當池</label>
+    <div class="tabs">
+        <div class="tab-btn active" onclick="switchTab('create')">🚀 發布菜單</div>
+        <div class="tab-btn" onclick="switchTab('manage')">💰 收款管理</div>
     </div>
 
-    <button class="btn-main" id="btn-pub" onclick="publish()" style="margin-top:20px;">🚀 發布並產生連結</button>
-    
-    <div id="result-box"></div>
+    <div id="tab-create" class="tab-content active">
+        <h2>建立新團購</h2>
+        <label>📂 從便當池載入</label>
+        <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
+
+        <label>🏠 店家名稱</label>
+        <input type="text" id="shop-title" placeholder="例如：快樂便當">
+
+        <label>📝 智慧貼上</label>
+        <textarea id="paste-area" rows="3" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
+        <button class="btn-sec" onclick="smartParse()">🪄 一鍵轉換</button>
+
+        <div id="item-list" style="margin-top:10px"></div>
+        <button class="btn-sec" onclick="addItem()">+ 手動新增</button>
+        
+        <div style="margin-top:15px;">
+            <input type="checkbox" id="save-pool" checked style="width:auto;"> <label for="save-pool" style="display:inline;">存入便當池</label>
+        </div>
+
+        <button class="btn-main" id="btn-pub" onclick="publish()" style="margin-top:20px;">🚀 發布並產生連結</button>
+        <div id="result-box"></div>
+    </div>
+
+    <div id="tab-manage" class="tab-content">
+        <h2>收款監控</h2>
+        <label>選擇要查帳的團購</label>
+        <select id="sheet-select" onchange="loadOrders()">
+            <option value="">-- 請選擇 --</option>
+        </select>
+        <button class="btn-sec" onclick="loadSheetList()">🔄 重新整理列表</button>
+
+        <div id="summary-area" class="summary-box" style="display:none"></div>
+        <div id="order-list"></div>
+    </div>
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請填入你的 GAS 網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
+    // ⚠️⚠️⚠️ 請確認填入正確的 GAS 網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyAXm3gXfospxCk79gLlfftUSCxztEmI0WRvdVg7SKtWH_2Xh5zaJlVendTjArOc2p6sw/exec";
 
-    // 初始化
     window.onload = function() {
-        if(GAS_URL.includes("你的_GAS")) alert("請記得修改 admin.html 裡的 GAS_URL！");
         fetchPool();
     };
 
-    // 1. 智慧辨識 (最強版)
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        if (tab === 'create') {
+            document.getElementById('tab-create').classList.add('active');
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        } else {
+            document.getElementById('tab-manage').classList.add('active');
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            loadSheetList(); // 切換過來時自動載入列表
+        }
+    }
+
+    // --- Part 1: 發布功能 (維持原樣) ---
+    function fetchPool() {
+        fetch(GAS_URL + "?action=get_pool").then(res=>res.json()).then(data => {
+            const sel = document.getElementById('pool-select');
+            sel.innerHTML = '<option value="">-- 請選擇 --</option>';
+            if(data.data) data.data.forEach(shop => sel.add(new Option(shop.title, JSON.stringify(shop.items))));
+        });
+    }
+
     function smartParse() {
         const text = document.getElementById('paste-area').value;
-        if(!text.trim()) return alert("請先貼上文字！");
-        
         const lines = text.split('\n');
-        document.getElementById('item-list').innerHTML = ''; // 清空
-        
+        document.getElementById('item-list').innerHTML = ''; 
         lines.forEach(line => {
-            const clean = line.trim();
-            if(!clean) return;
-            const match = clean.match(/(\d+)/g);
+            const match = line.trim().match(/(\d+)/g);
             if(match) {
-                const price = match[match.length - 1]; // 取最後一個數字
-                const name = clean.replace(price, '').replace(/[$.:：元NT\s]/g, '').trim();
+                const price = match[match.length - 1];
+                const name = line.trim().replace(price, '').replace(/[$.:：元NT\s]/g, '').trim();
                 if(name && price) addItem(name, price);
             }
         });
         document.getElementById('paste-area').value = '';
     }
 
-    // 2. 手動新增 UI
     function addItem(name='', price='') {
         const div = document.createElement('div');
         div.className = 'item-row';
-        div.innerHTML = `
-            <input type="text" class="name" value="${name}" placeholder="菜名">
-            <input type="number" class="price" value="${price}" placeholder="$" style="width:80px">
-            <button class="del-btn" onclick="this.parentElement.remove()">×</button>
-        `;
+        div.innerHTML = `<input type="text" class="name" value="${name}" placeholder="菜名"><input type="number" class="price" value="${price}" placeholder="$" style="width:80px"><button class="del-btn" onclick="this.parentElement.remove()">×</button>`;
         document.getElementById('item-list').appendChild(div);
     }
-
-    // 3. 讀取便當池 (GET)
-    function fetchPool() {
-        fetch(GAS_URL + "?action=get_pool")
-        .then(res => res.json())
-        .then(data => {
-            const sel = document.getElementById('pool-select');
-            sel.innerHTML = '<option value="">-- 請選擇 --</option>';
-            if(data.data) {
-                data.data.forEach(shop => {
-                    let opt = new Option(shop.title, JSON.stringify(shop.items));
-                    sel.add(opt);
-                });
-            }
-        });
-    }
-
+    
     function loadFromPool() {
         const sel = document.getElementById('pool-select');
         if(!sel.value) return;
@@ -115,60 +142,135 @@
         JSON.parse(sel.value).forEach(i => addItem(i.name, i.price));
     }
 
-    // 4. 發布 (POST)
     function publish() {
         const title = document.getElementById('shop-title').value;
         const items = [];
-        document.querySelectorAll('.item-row').forEach(row => {
-            const n = row.querySelector('.name').value;
-            const p = row.querySelector('.price').value;
+        document.querySelectorAll('.item-row').forEach(r => {
+            const n = r.querySelector('.name').value;
+            const p = r.querySelector('.price').value;
             if(n && p) items.push({name: n, price: p});
         });
 
-        if(!title || items.length === 0) return alert("資料不完整！");
-
+        if(!title || items.length === 0) return alert("資料不完整");
+        
         const btn = document.getElementById('btn-pub');
+        btn.innerText = "處理中...";
         btn.disabled = true;
-        btn.innerText = "發布中...";
 
-        const payload = {
-            action: 'create_menu',
-            title: title,
-            items: items,
-            saveToPool: document.getElementById('save-pool').checked
-        };
-
-        // 使用 fetch POST 發送 JSON
         fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(json => {
+            body: JSON.stringify({ action: 'create_menu', title: title, items: items, saveToPool: document.getElementById('save-pool').checked })
+        }).then(res => res.json()).then(json => {
             if(json.status === 'success') {
-                // 自動偵測 GitHub 網址，並把 admin.html 換成 index.html
-                let userLink = window.location.href.replace('admin.html', '') + 'index.html?id=' + json.menuId;
-                // 修正可能多餘的斜線
-                userLink = userLink.replace('//index.html', '/index.html'); 
-
+                let link = window.location.href.replace('admin.html', '') + 'index.html?id=' + json.menuId;
+                link = link.replace('//index.html', '/index.html');
                 document.getElementById('result-box').style.display = 'block';
-                document.getElementById('result-box').innerHTML = 
-                    `✅ <b>發布成功！</b><br>請複製此連結給 User：<br><br><a href="${userLink}" target="_blank" style="color:red;font-weight:bold;">${userLink}</a>`;
-                
+                document.getElementById('result-box').innerHTML = `✅ 發布成功！<br><a href="${link}" target="_blank" style="color:red;font-weight:bold;">${link}</a>`;
                 btn.innerText = "發布完成";
-                if(payload.saveToPool) setTimeout(fetchPool, 1000);
             } else {
-                alert("錯誤：" + json.message);
+                alert("失敗：" + json.message);
                 btn.disabled = false;
             }
-        })
-        .catch(err => {
-            alert("連線失敗！請檢查 GAS_URL");
-            console.error(err);
+        });
+    }
+
+    // --- Part 2: 查帳功能 (新功能) ---
+    
+    // 1. 載入所有已開團的清單
+    function loadSheetList() {
+        const sel = document.getElementById('sheet-select');
+        sel.innerHTML = '<option>載入中...</option>';
+        fetch(GAS_URL + "?action=get_sheets").then(res => res.json()).then(data => {
+            sel.innerHTML = '<option value="">-- 請選擇要查帳的團 --</option>';
+            if(data.data) {
+                data.data.reverse(); // 讓最新的在最上面
+                data.data.forEach(name => {
+                    // 只顯示店名 (去掉前面的時間戳記)，但 value 留完整 ID
+                    const displayName = name.split('_')[1] + " (" + name.split('_')[0].slice(4,8) + ")";
+                    sel.add(new Option(displayName, name));
+                });
+            }
+        });
+    }
+
+    // 2. 載入該團的訂單
+    function loadOrders() {
+        const menuId = document.getElementById('sheet-select').value;
+        if(!menuId) return;
+
+        document.getElementById('order-list').innerHTML = '<p style="text-align:center">載入訂單中...</p>';
+        
+        fetch(GAS_URL + "?action=get_orders&menuId=" + menuId)
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById('order-list');
+            list.innerHTML = '';
+            
+            if(data.status === 'success' && data.orders) {
+                let totalMoney = 0;
+                let paidMoney = 0;
+                let count = 0;
+
+                data.orders.forEach(order => {
+                    count++;
+                    totalMoney += parseInt(order.price);
+                    if(order.paid) paidMoney += parseInt(order.price);
+
+                    const div = document.createElement('div');
+                    div.className = 'order-row';
+                    const btnClass = order.paid ? 'status-paid' : 'status-unpaid';
+                    const btnText = order.paid ? '✅ 已付' : '未付';
+                    
+                    div.innerHTML = `
+                        <div class="order-info">
+                            <div class="order-name">${order.name} <span style="font-weight:normal; font-size:0.9rem">(${order.item})</span></div>
+                            <div class="order-detail">$${order.price} | ${order.note || '無備註'}</div>
+                        </div>
+                        <button class="pay-btn ${btnClass}" onclick="togglePay('${menuId}', ${order.row}, this, ${order.price})">${btnText}</button>
+                    `;
+                    list.appendChild(div);
+                });
+
+                // 更新統計
+                const summary = document.getElementById('summary-area');
+                summary.style.display = 'block';
+                summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
+
+                if(count === 0) list.innerHTML = '<p style="text-align:center;color:#666">目前還沒有人下單喔</p>';
+            }
+        });
+    }
+
+    // 3. 切換付款狀態
+    function togglePay(menuId, row, btn, price) {
+        // 先在前端變色，讓使用者覺得很快
+        const isPaid = btn.innerText.includes('已付');
+        
+        // 鎖定按鈕防止連點
+        btn.disabled = true;
+        btn.innerText = '更新中...';
+
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'toggle_payment', menuId: menuId, row: row })
+        }).then(res => res.json()).then(json => {
             btn.disabled = false;
+            if(json.status === 'success') {
+                if(json.newStatus === '已付') {
+                    btn.className = 'pay-btn status-paid';
+                    btn.innerText = '✅ 已付';
+                } else {
+                    btn.className = 'pay-btn status-unpaid';
+                    btn.innerText = '未付';
+                }
+                // 重新整理列表以更新總金額 (或者也可以寫複雜邏輯在前端更新，但直接 reload 最準)
+                loadOrders(); 
+            } else {
+                alert("更新失敗");
+                btn.innerText = isPaid ? '✅ 已付' : '未付'; // 恢復原狀
+            }
         });
     }
 </script>
 </body>
 </html>
-
