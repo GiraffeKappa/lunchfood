@@ -77,81 +77,55 @@
     items.forEach(function(item){ addItem(item.name, item.price); });
   }
 
-  // 1. 智慧辨識 (修正版)
+  // --- 強力版：智慧辨識 ---
   function smartParse() {
-    var text = document.getElementById('smart-area').value;
-    if(!text) return alert("請先貼上文字");
+    var textArea = document.getElementById('smart-area');
+    var text = textArea.value;
     
-    var lines = text.split('\n');
-    document.getElementById('item-list').innerHTML = ''; // 清空
+    if(!text.trim()) {
+       alert("⚠️ 請先貼上菜單文字喔！");
+       return;
+    }
+    
+    var lines = text.split('\n'); // 依換行切割
+    var count = 0;
+    
+    // 清空目前的列表
+    document.getElementById('item-list').innerHTML = ''; 
     
     lines.forEach(function(line) {
-      var clean = line.trim();
-      if(!clean) return;
-      var match = clean.match(/(\d+)/g); // 抓取數字
-      if(match) {
-        var price = match[match.length - 1]; // 最後一個數字當價格
-        var name = clean.replace(price, '').replace(/[$.:：]/g,'').trim();
-        if(name && price) addItem(name, price);
+      var cleanLine = line.trim();
+      if(!cleanLine) return; // 跳過空行
+
+      // 1. 抓取行內的所有數字
+      var matches = cleanLine.match(/(\d+)/g); 
+      
+      if(matches) {
+        // 策略：通常價格都在最後面 (例如：排骨飯 100)，但也可能在最前面
+        // 這裡我們取「最後一個出現的數字」當作價格
+        var price = matches[matches.length - 1]; 
+        
+        // 2. 把價格從字串中挖掉，剩下的就是菜名
+        var name = cleanLine.replace(price, '')
+                            .replace(/[$.:：元NT\s]/g, '') // 移除錢字符號和多餘空白
+                            .trim();
+
+        // 3. 只有當 菜名 和 價格 都有抓到時才新增
+        if(name && price) {
+          addItem(name, price);
+          count++;
+        }
       }
     });
-    document.getElementById('smart-area').value = '';
-  }
 
-  // 2. 手動新增
-  function addItem(name='', price='') {
-    var div = document.createElement('div');
-    div.className = 'item-row';
-    div.innerHTML = `
-      <input type="text" class="name" value="${name}" placeholder="菜名">
-      <input type="number" class="price" value="${price}" placeholder="$" style="width:80px;">
-      <button class="btn-del" onclick="this.parentElement.remove()">×</button>
-    `;
-    document.getElementById('item-list').appendChild(div);
-  }
-
-  // 3. 發布 (使用 google.script.run，最穩定！)
-  function publish() {
-    var title = document.getElementById('menu-title').value;
-    var rows = document.querySelectorAll('.item-row');
-    var items = [];
-    
-    rows.forEach(function(row) {
-      var n = row.querySelector('.name').value;
-      var p = row.querySelector('.price').value;
-      if(n && p) items.push({name: n, price: p});
-    });
-
-    if(!title || items.length === 0) return alert("請輸入店名並至少一道菜");
-
-    var btn = document.getElementById('btn-pub');
-    btn.disabled = true;
-    btn.innerText = "處理中...";
-
-    var data = {
-      title: title,
-      items: items,
-      saveToPool: document.getElementById('save-pool').checked
-    };
-
-    google.script.run
-      .withSuccessHandler(function(res) {
-         btn.innerText = "發布完成！";
-         var url = <?= ScriptApp.getService().getUrl() ?>; // 自動取得當前網址
-         var finalLink = url + "?id=" + encodeURIComponent(res.menuId);
-         
-         document.getElementById('link-box').style.display = 'block';
-         document.getElementById('link-box').innerHTML = 
-           '✅ 連結已產生：<br><a href="' + finalLink + '" target="_blank">' + finalLink + '</a>';
-         
-         if(data.saveToPool) google.script.run.withSuccessHandler(renderPool).apiGetPool(); // 重整選單
-      })
-      .withFailureHandler(function(err) {
-         alert("錯誤：" + err);
-         btn.disabled = false;
-      })
-      .apiCreateMenu(data);
+    if(count > 0) {
+      textArea.value = ''; // 成功後清空輸入框
+      // alert("✅ 成功辨識 " + count + " 道菜！"); // (嫌吵可註解掉)
+    } else {
+      alert("❌ 無法辨識內容！\n\n請確認格式是否包含數字，例如：\n排骨飯 100\n雞腿飯 110");
+    }
   }
 </script>
 </body>
 </html>
+
