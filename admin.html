@@ -183,122 +183,103 @@
     </div>
 
 <script>
-    // ⚠️ 請填入剛剛複製的 /exec 結尾網址 (絕對不能是 /library/)
-    const SCRIPT_URL = "https://script.google.com/macros/s/您的正確ID/exec"; 
-    
-    // ⚠️ User 頁面網址
-    const USER_PAGE_URL = "https://lunchfood.netlify.app/"; 
+    // ⚠️ 這裡也要填入正確的 GAS 網址
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxqBOM8VD1mZwXGfctdItrDxWs8AIxjZ38Ye9BgEPvmBzp_V2SSCaXAAAbt_fCiYI/exec"; 
 
-    window.onload = function() { fetchPool(); };
+    let currentMenuId = ""; // 用來存現在是哪個菜單
+    let selectedItem = "";
+    let selectedPrice = 0;
 
-    // 1. 智慧貼上 (已修復)
-    function smartParse() {
-        const rawText = document.getElementById('smart-paste-area').value;
-        if (!rawText.trim()) { alert("請先貼上文字！"); return; }
-        const lines = rawText.split('\n');
+    // 頁面載入時，抓取網址上的 ID
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentMenuId = urlParams.get('id');
+
+        if (!currentMenuId) {
+            document.querySelector('.menu-section').innerHTML = "<h3>⚠️ 無法載入菜單</h3><p>網址缺少 ID，請由管理員提供的連結進入。</p>";
+            return;
+        }
+
+        loadMenu(currentMenuId);
+    };
+
+    // 向 GAS 請求菜單資料
+    function loadMenu(menuId) {
+        document.querySelector('.menu-section').innerHTML = "<h3>⏳ 菜單載入中...</h3>";
         
-        document.getElementById('menu-editor-container').innerHTML = ''; // 清空
-        
-        let count = 0;
-        lines.forEach(line => {
-            let cleanLine = line.trim();
-            if (!cleanLine) return;
-            // 抓取最後一個數字當價格
-            const priceMatch = cleanLine.match(/(\d+)/g); 
-            if (priceMatch) {
-                const price = priceMatch[priceMatch.length - 1];
-                let name = cleanLine.replace(price, '').replace(/[$.元NT...:：]/g, '').trim();
-                if (name && price) {
-                    addMenuItem(name, price);
-                    count++;
-                }
-            }
-        });
-        if(count === 0) alert("無法辨識，請確認格式 (例如：排骨飯 100)");
-        else document.getElementById('smart-paste-area').value = '';
-    }
-
-    // 2. 發布菜單 (已修復)
-    function publishMenu() {
-        const title = document.getElementById('menu-title').value;
-        const saveToPool = document.getElementById('save-pool-check').checked;
-        const items = [];
-        
-        document.querySelectorAll('.menu-editor-item').forEach(el => {
-            const name = el.querySelector('.item-name').value;
-            const price = el.querySelector('.item-price').value;
-            if (name && price) items.push({ name, price: parseInt(price) });
-        });
-
-        if (!title || items.length === 0) { alert("請輸入店名並至少新增一道菜！"); return; }
-
-        const btn = document.getElementById('btn-publish');
-        btn.disabled = true;
-        btn.innerText = "連線中...";
-
-        fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'create_menu', title, items, saveToPool })
-        })
+        fetch(`${SCRIPT_URL}?action=get_menu&id=${encodeURIComponent(menuId)}`)
         .then(res => res.json())
-        .then(json => {
-            if(json.status === 'success') {
-                btn.innerText = "發布完成！";
-                const link = `${USER_PAGE_URL}?id=${encodeURIComponent(json.menuId)}`;
-                document.getElementById('result-link-box').style.display = 'block';
-                document.getElementById('result-link-box').innerHTML = 
-                    `✅ 發布成功！<br><a href="${link}" target="_blank" style="font-size:1.2rem;color:red;">${link}</a>`;
-                if(saveToPool) setTimeout(fetchPool, 1000);
+        .then(data => {
+            if (data.status === "success") {
+                // 更新標題
+                document.querySelector('.header h1').innerText = `🍱 今天吃：${data.title.split('_')[1]}`; // 去掉時間戳記
+                
+                // 動態產生菜單 HTML
+                const menuContainer = document.querySelector('.menu-section');
+                menuContainer.innerHTML = '<h3>1. 選擇餐點</h3>'; // 清空 loading
+                
+                data.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'menu-item';
+                    div.onclick = function() { selectFood(item.name, item.price, this); };
+                    div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
+                    menuContainer.appendChild(div);
+                });
             } else {
-                alert("錯誤：" + json.message);
-                btn.disabled = false;
+                document.querySelector('.menu-section').innerHTML = `<h3>❌ 錯誤</h3><p>${data.message}</p>`;
             }
         })
         .catch(err => {
-            alert("連線失敗，請檢查網址是否正確 (必須是 /exec 結尾)");
+            document.querySelector('.menu-section').innerHTML = "<h3>❌ 連線失敗</h3><p>請檢查網路</p>";
+        });
+    }
+
+    function selectFood(name, price, element) {
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        selectedItem = name;
+        selectedPrice = price;
+    }
+
+    function submitOrder() {
+        const name = document.getElementById('username').value;
+        const note = document.getElementById('note').value;
+        const btn = document.getElementById('btnSubmit');
+
+        if (!name) { alert("請輸入名字！"); return; }
+        if (!selectedItem) { alert("請選擇一份餐點！"); return; }
+
+        btn.disabled = true;
+        btn.innerText = "資料傳送中...";
+
+        const orderData = {
+            action: "order", // 告訴後端這是訂單
+            menuId: currentMenuId, // 重要！告訴後端要寫入哪個分頁
+            name: name,
+            item: selectedItem,
+            price: selectedPrice,
+            note: note
+        };
+
+        // 這裡不需要 no-cors，因為後端現在支援 CORS 回傳
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(orderData)
+        }).then(res => res.json())
+        .then(json => {
+            if (json.status === "success") {
+                document.querySelector('.input-section').style.display = 'none';
+                document.querySelector('.menu-section').style.display = 'none';
+                document.getElementById('success-msg').style.display = 'block';
+            } else {
+                alert("訂購失敗：" + json.message);
+                btn.disabled = false;
+            }
+        }).catch(error => {
+            alert("發生錯誤，請稍後再試");
             btn.disabled = false;
         });
     }
-
-    // 3. 讀取便當池
-    function fetchPool() {
-        const select = document.getElementById('pool-select');
-        fetch(`${SCRIPT_URL}?action=get_pool`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === 'success') {
-                select.innerHTML = '<option value="">-- 快速載入 --</option>';
-                data.data.forEach((shop, i) => {
-                    let opt = new Option(shop.title, i);
-                    opt.dataset.items = JSON.stringify(shop.items);
-                    select.add(opt);
-                });
-                select.disabled = false;
-            }
-        });
-    }
-
-    function loadFromPool() {
-        const select = document.getElementById('pool-select');
-        if(!select.value) return;
-        const opt = select.options[select.selectedIndex];
-        document.getElementById('menu-title').value = opt.text;
-        document.getElementById('menu-editor-container').innerHTML = '';
-        JSON.parse(opt.dataset.items).forEach(item => addMenuItem(item.name, item.price));
-    }
-
-    function addMenuItem(name='', price='') {
-        const div = document.createElement('div');
-        div.className = 'menu-editor-item';
-        div.innerHTML = `<input type="text" class="input-field item-name" value="${name}" placeholder="菜名">
-                         <input type="number" class="input-field item-price" value="${price}" placeholder="價格">
-                         <button class="btn-remove" onclick="this.parentElement.remove()">×</button>`;
-        document.getElementById('menu-editor-container').appendChild(div);
-    }
-    
-    function switchTab(id, el) { /* 保持原樣 */ 
-        document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-    }
 </script>
+
 </body>
