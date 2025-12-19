@@ -1,216 +1,110 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>食神點餐單 - 轉角阿姨便當</title>
-    <style>
-        /* --- 樣式設定 (保持原本風格) --- */
-        :root {
-            --appetite-orange: #FF6B35;
-            --bg-cream: #FFF8F0;
-            --text-dark: #4A2C2A;
-        }
-        body {
-            font-family: 'Microsoft JhengHei', sans-serif;
-            background-color: var(--bg-cream);
-            color: var(--text-dark);
-            margin: 0; padding: 20px;
-            display: flex; justify-content: center;
-        }
-        .container {
-            width: 100%; max-width: 500px;
-            background: white; border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;
-        }
-        .header {
-            background: var(--appetite-orange); color: white;
-            padding: 20px; text-align: center;
-        }
-        .header h1 { margin: 0; font-size: 1.5rem; }
-        
-        /* 菜單區 */
-        .menu-section { padding: 20px; }
-        .menu-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer;
-            transition: background 0.2s; border-radius: 8px;
-        }
-        .menu-item:hover { background-color: #fff3e0; }
-        .menu-item.selected { background-color: #ffe0b2; border: 2px solid var(--appetite-orange); }
-        .price { color: #d32f2f; font-weight: bold; }
-
-        /* 輸入區 */
-        .input-section { padding: 20px; background: #fafafa; border-top: 2px dashed #ddd; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select {
-            width: 100%; padding: 10px; border: 1px solid #ccc;
-            border-radius: 8px; box-sizing: border-box; font-size: 1rem;
-        }
-
-        /* 按鈕 */
-        .submit-btn {
-            width: 100%; padding: 15px; background: var(--text-dark);
-            color: #F7C800; border: none; border-radius: 50px;
-            font-size: 1.2rem; font-weight: bold; cursor: pointer;
-        }
-        .submit-btn:disabled { background: #ccc; color: #666; cursor: not-allowed; }
-
-        /* 成功提示 */
-        #success-msg {
-            display: none; text-align: center; padding: 20px;
-            color: green; font-weight: bold; background: #e8f5e9;
-        }
-    </style>
+<base target="_top">
+<style>
+  body { font-family: 'Microsoft JhengHei', sans-serif; background: #FFF8F0; padding: 20px; }
+  .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+  .header { background: #FF6B35; color: white; padding: 20px; text-align: center; }
+  .content { padding: 20px; }
+  .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+  .menu-item:hover { background: #fff3e0; }
+  .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
+  .price { color: #d32f2f; font-weight: bold; }
+  
+  .input-group { margin-top: 20px; padding-top: 20px; border-top: 2px dashed #ddd; }
+  input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+  
+  button { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
+  button:disabled { background: #ccc; }
+  
+  #msg { text-align: center; padding: 20px; color: green; font-weight: bold; display: none; }
+</style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h1>🍱 今天吃：轉角阿姨便當</h1>
-        <p>請點選餐點並送出，方便統計！</p>
+  <div class="header">
+    <h2 id="shop-name">載入中...</h2>
+  </div>
+  
+  <div class="content" id="order-form">
+    <div id="menu-list"></div>
+    
+    <div class="input-group">
+      <input type="text" id="username" placeholder="你的名字 (必填)">
+      <input type="text" id="note" placeholder="備註 (飯少/不蔥)">
+      <button id="btn-submit" onclick="submitOrder()">🚀 確認送出</button>
     </div>
-
-    <div class="menu-section">
-        <h3>1. 選擇餐點</h3>
-        
-        <div class="menu-item" onclick="selectFood('招牌排骨飯', 100, this)">
-            <div>招牌排骨飯</div><div class="price">$100</div>
-        </div>
-        
-        <div class="menu-item" onclick="selectFood('酥炸雞腿飯', 110, this)">
-            <div>酥炸雞腿飯</div><div class="price">$110</div>
-        </div>
-        
-        <div class="menu-item" onclick="selectFood('古早味滷肉飯', 55, this)">
-            <div>古早味滷肉飯</div><div class="price">$55</div>
-        </div>
-        
-        <div class="menu-item" onclick="selectFood('香煎鯖魚飯', 120, this)">
-            <div>香煎鯖魚飯</div><div class="price">$120</div>
-        </div>
-    </div>
-
-    <div class="input-section">
-        <h3>2. 填寫資料</h3>
-        <div class="form-group">
-            <label>你的名字 (必填)</label>
-            <input type="text" id="username" placeholder="例：小明">
-        </div>
-        <div class="form-group">
-            <label>備註 (選填)</label>
-            <input type="text" id="note" placeholder="例：不要香菜、飯少">
-        </div>
-        
-        <button class="submit-btn" id="btnSubmit" onclick="submitOrder()">🚀 確認送出訂單</button>
-    </div>
-
-    <div id="success-msg">
-        ✅ 訂購成功！<br>已寫入食神帳本
-    </div>
+  </div>
+  
+  <div id="msg">✅ 訂購成功！已寫入 Excel。</div>
 </div>
 
 <script>
-    // ⚠️ 這裡也要填入正確的 GAS 網址
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxqBOM8VD1mZwXGfctdItrDxWs8AIxjZ38Ye9BgEPvmBzp_V2SSCaXAAAbt_fCiYI/exec"; 
+  var currentMenuId = "";
+  var selectedItem = "";
+  var selectedPrice = "";
 
-    let currentMenuId = ""; // 用來存現在是哪個菜單
-    let selectedItem = "";
-    let selectedPrice = 0;
-
-    // 頁面載入時，抓取網址上的 ID
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        currentMenuId = urlParams.get('id');
-
-        if (!currentMenuId) {
-            document.querySelector('.menu-section').innerHTML = "<h3>⚠️ 無法載入菜單</h3><p>網址缺少 ID，請由管理員提供的連結進入。</p>";
-            return;
-        }
-
-        loadMenu(currentMenuId);
-    };
-
-    // 向 GAS 請求菜單資料
-    function loadMenu(menuId) {
-        document.querySelector('.menu-section').innerHTML = "<h3>⏳ 菜單載入中...</h3>";
-        
-        fetch(`${SCRIPT_URL}?action=get_menu&id=${encodeURIComponent(menuId)}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                // 更新標題
-                document.querySelector('.header h1').innerText = `🍱 今天吃：${data.title.split('_')[1]}`; // 去掉時間戳記
-                
-                // 動態產生菜單 HTML
-                const menuContainer = document.querySelector('.menu-section');
-                menuContainer.innerHTML = '<h3>1. 選擇餐點</h3>'; // 清空 loading
-                
-                data.items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'menu-item';
-                    div.onclick = function() { selectFood(item.name, item.price, this); };
-                    div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
-                    menuContainer.appendChild(div);
-                });
-            } else {
-                document.querySelector('.menu-section').innerHTML = `<h3>❌ 錯誤</h3><p>${data.message}</p>`;
-            }
-        })
-        .catch(err => {
-            document.querySelector('.menu-section').innerHTML = "<h3>❌ 連線失敗</h3><p>請檢查網路</p>";
-        });
+  window.onload = function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    currentMenuId = urlParams.get('id');
+    
+    if(!currentMenuId) {
+       document.querySelector('.container').innerHTML = "<h3 style='padding:20px;text-align:center'>👋 請使用管理員提供的連結進入點餐</h3>";
+       return;
     }
+    
+    // 呼叫後端讀取菜單
+    google.script.run.withSuccessHandler(renderMenu).apiGetMenu(currentMenuId);
+  };
 
-    function selectFood(name, price, element) {
-        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        selectedItem = name;
-        selectedPrice = price;
+  function renderMenu(res) {
+    if(res.status !== 'success') {
+      document.getElementById('shop-name').innerText = "❌ " + res.message;
+      return;
     }
+    
+    document.getElementById('shop-name').innerText = "🍱 " + res.title.split('_')[1];
+    var list = document.getElementById('menu-list');
+    
+    res.items.forEach(function(item) {
+      var div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
+      div.onclick = function() { selectItem(this, item.name, item.price); };
+      list.appendChild(div);
+    });
+  }
 
-    function submitOrder() {
-        const name = document.getElementById('username').value;
-        const note = document.getElementById('note').value;
-        const btn = document.getElementById('btnSubmit');
+  function selectItem(el, name, price) {
+    document.querySelectorAll('.menu-item').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+    selectedItem = name;
+    selectedPrice = price;
+  }
 
-        if (!name) { alert("請輸入名字！"); return; }
-        if (!selectedItem) { alert("請選擇一份餐點！"); return; }
-
-        btn.disabled = true;
-        btn.innerText = "資料傳送中...";
-
-        const orderData = {
-            action: "order", // 告訴後端這是訂單
-            menuId: currentMenuId, // 重要！告訴後端要寫入哪個分頁
-            name: name,
-            item: selectedItem,
-            price: selectedPrice,
-            note: note
-        };
-
-        // 這裡不需要 no-cors，因為後端現在支援 CORS 回傳
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify(orderData)
-        }).then(res => res.json())
-        .then(json => {
-            if (json.status === "success") {
-                document.querySelector('.input-section').style.display = 'none';
-                document.querySelector('.menu-section').style.display = 'none';
-                document.getElementById('success-msg').style.display = 'block';
-            } else {
-                alert("訂購失敗：" + json.message);
-                btn.disabled = false;
-            }
-        }).catch(error => {
-            alert("發生錯誤，請稍後再試");
-            btn.disabled = false;
-        });
-    }
+  function submitOrder() {
+    var name = document.getElementById('username').value;
+    var note = document.getElementById('note').value;
+    
+    if(!name || !selectedItem) return alert("請輸入名字並選擇餐點");
+    
+    var btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.innerText = "傳送中...";
+    
+    google.script.run.withSuccessHandler(function() {
+       document.getElementById('order-form').style.display = 'none';
+       document.getElementById('msg').style.display = 'block';
+    }).apiSubmitOrder({
+       menuId: currentMenuId,
+       name: name,
+       item: selectedItem,
+       price: selectedPrice,
+       note: note
+    });
+  }
 </script>
-
 </body>
-
 </html>
