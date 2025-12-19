@@ -1,110 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <base target="_top">
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; max-width: 600px; margin: 0 auto; }
-    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    h2 { color: #FF6B35; text-align: center; border-bottom: 2px solid #FF6B35; padding-bottom: 10px; }
-    label { font-weight: bold; display: block; margin-top: 15px; }
-    input, textarea { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
-    button { width: 100%; padding: 12px; margin-top: 15px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; font-size: 1rem; }
-    .btn-main { background: #FF6B35; color: white; }
-    .btn-main:disabled { background: #ccc; }
-    .btn-sec { background: #eee; color: #333; margin-top: 5px; }
-    #result-area { display: none; margin-top: 20px; background: #e8f5e9; padding: 15px; border-radius: 5px; word-break: break-all; }
-    .item-preview { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤴 食神後台 (GitHub版)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #FF6B35; border-bottom: 2px solid #FF6B35; padding-bottom: 15px; }
+        label { display: block; margin: 15px 0 5px; font-weight: bold; color: #333; }
+        input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        .btn-main { background: #FF6B35; color: white; }
+        .btn-main:hover { background: #e55a2b; }
+        .btn-sec { background: #e4e6eb; color: #333; }
+        .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .del-btn { background: #ffebee; color: red; width: auto; padding: 0 15px; }
+        #result-box { display: none; background: #e8f5e9; padding: 15px; margin-top: 20px; border-radius: 8px; word-break: break-all; }
+    </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🤴 食神控制中心</h2>
-  
-  <label>店家名稱</label>
-  <input type="text" id="shop-title" placeholder="例如：週五吃雞腿">
-  
-  <label>快速貼上菜單 (菜名 價格)</label>
-  <textarea id="paste-area" rows="5" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
-  <button class="btn-sec" onclick="doSmartParse()">⚡️ 一鍵轉換</button>
-  
-  <label>預覽菜單</label>
-  <div id="preview-list" style="background:#fafafa; padding:10px; min-height:50px;">
-    <span style="color:#999">等待輸入...</span>
-  </div>
+    <h2>⚡️ 食神控制中心</h2>
+    
+    <label>📂 從便當池載入</label>
+    <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
 
-  <button class="btn-main" id="btn-pub" onclick="doPublish()">🚀 發布並產生連結</button>
-  
-  <div id="result-area"></div>
+    <label>🏠 店家名稱</label>
+    <input type="text" id="shop-title" placeholder="例如：快樂便當">
+
+    <label>📝 智慧貼上 (菜名 價格)</label>
+    <textarea id="paste-area" rows="4" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
+    <button class="btn-sec" onclick="smartParse()">🪄 一鍵轉換</button>
+
+    <label>📋 菜單預覽</label>
+    <div id="item-list"></div>
+    <button class="btn-sec" onclick="addItem()">+ 手動新增</button>
+    
+    <div style="margin-top:15px;">
+        <input type="checkbox" id="save-pool" checked style="width:auto;"> 
+        <label for="save-pool" style="display:inline;">存入便當池</label>
+    </div>
+
+    <button class="btn-main" id="btn-pub" onclick="publish()" style="margin-top:20px;">🚀 發布並產生連結</button>
+    
+    <div id="result-box"></div>
 </div>
 
 <script>
-  let menuItems = [];
+    // ⚠️⚠️⚠️ 請填入你的 GAS 網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
-  // 一鍵轉換邏輯
-  function doSmartParse() {
-    const text = document.getElementById('paste-area').value;
-    const lines = text.split('\n');
-    menuItems = []; // 重置
-    
-    lines.forEach(line => {
-      const clean = line.trim();
-      if (!clean) return;
-      // 抓數字
-      const match = clean.match(/(\d+)/g);
-      if (match) {
-        const price = match[match.length - 1]; // 取最後一個數字當價格
-        const name = clean.replace(price, '').replace(/[$.:：]/g, '').trim();
-        if (name && price) {
-          menuItems.push({ name: name, price: price });
-        }
-      }
-    });
-    
-    renderPreview();
-  }
+    // 初始化
+    window.onload = function() {
+        if(GAS_URL.includes("你的_GAS")) alert("請記得修改 admin.html 裡的 GAS_URL！");
+        fetchPool();
+    };
 
-  // 顯示預覽
-  function renderPreview() {
-    const div = document.getElementById('preview-list');
-    if (menuItems.length === 0) {
-      div.innerHTML = '<span style="color:#999">無法辨識，請確認格式</span>';
-      return;
-    }
-    div.innerHTML = '';
-    menuItems.forEach(item => {
-      div.innerHTML += `<div class="item-preview"><span>${item.name}</span> <b>$${item.price}</b></div>`;
-    });
-  }
-
-  // 發布
-  function doPublish() {
-    const title = document.getElementById('shop-title').value;
-    if (!title || menuItems.length === 0) {
-      alert("請輸入店名並至少新增一道菜！");
-      return;
+    // 1. 智慧辨識 (最強版)
+    function smartParse() {
+        const text = document.getElementById('paste-area').value;
+        if(!text.trim()) return alert("請先貼上文字！");
+        
+        const lines = text.split('\n');
+        document.getElementById('item-list').innerHTML = ''; // 清空
+        
+        lines.forEach(line => {
+            const clean = line.trim();
+            if(!clean) return;
+            const match = clean.match(/(\d+)/g);
+            if(match) {
+                const price = match[match.length - 1]; // 取最後一個數字
+                const name = clean.replace(price, '').replace(/[$.:：元NT\s]/g, '').trim();
+                if(name && price) addItem(name, price);
+            }
+        });
+        document.getElementById('paste-area').value = '';
     }
 
-    const btn = document.getElementById('btn-pub');
-    btn.disabled = true;
-    btn.innerText = "正在建立中...";
+    // 2. 手動新增 UI
+    function addItem(name='', price='') {
+        const div = document.createElement('div');
+        div.className = 'item-row';
+        div.innerHTML = `
+            <input type="text" class="name" value="${name}" placeholder="菜名">
+            <input type="number" class="price" value="${price}" placeholder="$" style="width:80px">
+            <button class="del-btn" onclick="this.parentElement.remove()">×</button>
+        `;
+        document.getElementById('item-list').appendChild(div);
+    }
 
-    // 呼叫後端
-    google.script.run
-      .withSuccessHandler(function(res) {
-        // 取得當前網址並加上 ID
-        google.script.run.withSuccessHandler(function(url) {
-          const finalLink = url + "?id=" + encodeURIComponent(res.menuId);
-          
-          document.getElementById('result-area').style.display = 'block';
-          document.getElementById('result-area').innerHTML = 
-            `✅ 發布成功！<br>請複製連結給同事：<br><br><a href="${finalLink}" target="_blank" style="color:red;font-weight:bold;">${finalLink}</a>`;
-          
-          btn.innerText = "發布完成";
-        }).getScriptUrl();
-      })
-      .apiCreateMenu({ title: title, items: menuItems });
-  }
+    // 3. 讀取便當池 (GET)
+    function fetchPool() {
+        fetch(GAS_URL + "?action=get_pool")
+        .then(res => res.json())
+        .then(data => {
+            const sel = document.getElementById('pool-select');
+            sel.innerHTML = '<option value="">-- 請選擇 --</option>';
+            if(data.data) {
+                data.data.forEach(shop => {
+                    let opt = new Option(shop.title, JSON.stringify(shop.items));
+                    sel.add(opt);
+                });
+            }
+        });
+    }
+
+    function loadFromPool() {
+        const sel = document.getElementById('pool-select');
+        if(!sel.value) return;
+        document.getElementById('shop-title').value = sel.options[sel.selectedIndex].text;
+        document.getElementById('item-list').innerHTML = '';
+        JSON.parse(sel.value).forEach(i => addItem(i.name, i.price));
+    }
+
+    // 4. 發布 (POST)
+    function publish() {
+        const title = document.getElementById('shop-title').value;
+        const items = [];
+        document.querySelectorAll('.item-row').forEach(row => {
+            const n = row.querySelector('.name').value;
+            const p = row.querySelector('.price').value;
+            if(n && p) items.push({name: n, price: p});
+        });
+
+        if(!title || items.length === 0) return alert("資料不完整！");
+
+        const btn = document.getElementById('btn-pub');
+        btn.disabled = true;
+        btn.innerText = "發布中...";
+
+        const payload = {
+            action: 'create_menu',
+            title: title,
+            items: items,
+            saveToPool: document.getElementById('save-pool').checked
+        };
+
+        // 使用 fetch POST 發送 JSON
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(json => {
+            if(json.status === 'success') {
+                // 自動偵測 GitHub 網址，並把 admin.html 換成 index.html
+                let userLink = window.location.href.replace('admin.html', '') + 'index.html?id=' + json.menuId;
+                // 修正可能多餘的斜線
+                userLink = userLink.replace('//index.html', '/index.html'); 
+
+                document.getElementById('result-box').style.display = 'block';
+                document.getElementById('result-box').innerHTML = 
+                    `✅ <b>發布成功！</b><br>請複製此連結給 User：<br><br><a href="${userLink}" target="_blank" style="color:red;font-weight:bold;">${userLink}</a>`;
+                
+                btn.innerText = "發布完成";
+                if(payload.saveToPool) setTimeout(fetchPool, 1000);
+            } else {
+                alert("錯誤：" + json.message);
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            alert("連線失敗！請檢查 GAS_URL");
+            console.error(err);
+            btn.disabled = false;
+        });
+    }
 </script>
 </body>
 </html>
