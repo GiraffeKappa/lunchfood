@@ -1,287 +1,157 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡️ 食神控制中心</title>
-    <style>
-        /* --- 🎨 淺色主題配色 --- */
-        :root {
-            --bg-light: #f4f7f6;      /* 整體背景 */
-            --card-bg: #ffffff;       /* 卡片背景 */
-            --text-main: #333333;     /* 主要文字 */
-            --text-sub: #666666;      /* 次要文字 */
-            --gold: #F7C800;          /* 強調色 (金) */
-            --orange: #FF6B35;        /* 強調色 (橘) */
-            --header-bg: #ffffff;     /* 標題列背景 */
-            --nav-bg: #ffffff;        /* 導覽列背景 */
-            --border-color: #e0e0e0;  /* 邊框顏色 */
-        }
-
-        body {
-            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-main);
-            margin: 0; padding: 0;
-            padding-bottom: 80px;
-        }
-
-        /* 頂部數據列 */
-        .dashboard-header {
-            background: var(--header-bg);
-            padding: 20px;
-            text-align: center;
-            border-bottom: 2px solid var(--orange);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        .total-stats { display: flex; justify-content: space-around; margin-top: 15px; }
-        .stat-box .num { font-size: 1.8rem; font-weight: 800; color: var(--orange); }
-        .stat-box .label { font-size: 0.9rem; color: var(--text-sub); }
-
-        /* 通用容器與卡片 */
-        .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s; max-width: 800px; margin: 0 auto; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
-        .card-box { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        h3.tab-title { color: var(--orange); margin-top: 0; border-left: 4px solid var(--orange); padding-left: 10px;}
-<div style="margin: 15px 0;">
-    <input type="checkbox" id="save-pool-check" checked>
-    <label for="save-pool-check" style="cursor:pointer; color:var(--text-main);">同時將此菜單存入「便當池」，下次可直接選用</label>
-</div>
-        /* --- 新增：發布團購 (Create Menu) --- */
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-main); }
-        .input-field { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 1rem; transition: border 0.3s;}
-        .input-field:focus { border-color: var(--orange); outline: none; }
-        
-        .menu-editor-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .menu-editor-item input[type="text"] { flex-grow: 2; }
-        .menu-editor-item input[type="number"] { flex-grow: 1; max-width: 100px; }
-        .btn-remove { background: #ffebee; color: #d32f2f; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; line-height: 1;}
-        
-        .btn-add { background: var(--bg-light); color: var(--text-main); border: 2px dashed var(--border-color); width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: all 0.3s;}
-        .btn-add:hover { border-color: var(--orange); color: var(--orange); background: #fff5f0;}
-
-        .btn-submit { background: var(--orange); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-size: 1.2rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3); transition: transform 0.2s;}
-        .btn-submit:hover { transform: translateY(-2px); background: #e55a2b; }
-        .btn-submit:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; transform: none;}
-
-        #result-link-box { display: none; margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; word-break: break-all; color: #2e7d32;}
-
-        /* --- 其他分頁樣式 (配合淺色主題調整) --- */
-        .order-card { background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);}
-        .order-info h4 { margin: 0 0 5px 0; color: var(--text-main); }
-        .order-info p { margin: 0; font-size: 0.9rem; color: var(--text-sub); }
-        
-        .ledger-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border-color); background: var(--card-bg);}
-        .pay-status { padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; border: 1px solid var(--text-sub); color: var(--text-sub); background: #fff;}
-        .pay-status.paid { background: var(--success-green, #4CAF50); color: white; border: none; font-weight: bold; }
-
-        .prompter-box { background: var(--card-bg); padding: 20px; border-radius: 10px; min-height: 300px; border: 1px solid var(--border-color);}
-        .prompter-line { font-size: 2rem; margin-bottom: 15px; border-bottom: 2px dashed var(--border-color); padding-bottom: 10px; color: var(--text-main); font-weight: bold;}
-        .prompter-qty { color: var(--orange); font-weight: 900; font-size: 3rem; float: right;}
-
-        /* 底部導覽列 */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--nav-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color);}
-        .nav-item { text-align: center; color: var(--text-sub); cursor: pointer; flex: 1; transition: color 0.3s;}
-        .nav-item.active { color: var(--orange); }
-        .nav-icon { font-size: 1.6rem; display: block; margin-bottom: 4px;}
-        .nav-text { font-size: 0.7rem; font-weight: bold;}
-
-    </style>
+<base target="_top">
+<style>
+  body { font-family: 'Microsoft JhengHei', sans-serif; background: #f4f7f6; color: #333; padding: 20px; max-width: 600px; margin: 0 auto; }
+  h2 { color: #FF6B35; text-align: center; border-bottom: 2px solid #FF6B35; padding-bottom: 10px; }
+  .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  
+  input, textarea, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+  button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+  
+  .btn-main { background: #FF6B35; color: white; font-size: 1.1rem; }
+  .btn-main:disabled { background: #ccc; }
+  .btn-sec { background: #eee; color: #333; }
+  .btn-del { background: #ffebee; color: red; width: auto; padding: 5px 10px; margin: 0; }
+  
+  .item-row { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
+  .item-row input { margin: 0; }
+  
+  #link-box { display: none; background: #e8f5e9; padding: 15px; border-radius: 5px; word-break: break-all; margin-top: 15px; }
+</style>
 </head>
 <body>
 
-    <div class="dashboard-header">
-        <h2 style="margin:0; color: var(--text-main);">🤴 食神控制中心</h2>
-        <div class="total-stats">
-            <div class="stat-box">
-                <div class="num" id="total-count">0</div>
-                <div class="label">總份數</div>
-            </div>
-            <div class="stat-box">
-                <div class="num" id="total-price">$0</div>
-                <div class="label">總金額</div>
-            </div>
-        </div>
-    </div>
+<h2>🤴 食神控制中心</h2>
 
-    <div id="tab-create" class="tab-content active">
-        <h3 class="tab-title">🚀 建立新團購便當站</h3>
-        <div class="card-box">
-            
-            <div class="input-group">
-                <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
-                    <label style="font-weight:bold; color:var(--text-sub);">📂 從便當池快速載入 (未實作)</label>
-                    <select id="pool-select" class="input-field" disabled>
-                        <option value="">(功能開發中)</option>
-                    </select>
-                </div>
+<div class="card">
+  <label>📂 快速載入店家</label>
+  <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
 
-                <label for="menu-title">店家名稱</label>
-                <input type="text" id="menu-title" class="input-field" placeholder="例如：週五吃炸雞">
-            </div>
+  <hr style="border:0; border-top:1px dashed #ddd; margin: 15px 0;">
 
-            <div style="background:#fff3e0; padding:15px; border-radius:8px; margin-bottom:20px; border:1px dashed var(--orange);">
-                <label style="font-weight:bold; color:var(--orange);">✨ 懶人模式：智慧貼上</label>
-                <p style="font-size:0.8rem; margin:5px 0; color:#666;">
-                    請貼上文字 (格式：菜名 價格，一行一個)
-                </p>
-                <textarea id="smart-paste-area" class="input-field" rows="4" placeholder="範例：
-招牌排骨飯 100
-酥炸雞腿飯 110"></textarea>
-                <button class="btn-add" style="background:var(--orange); color:white; border:none; margin-top:10px;" onclick="smartParse()">⚡️ 一鍵轉換為菜單</button>
-            </div>
-            
-            <label style="display:block; margin-bottom:8px; font-weight:bold;">菜單項目 (可手動調整)</label>
-            <div id="menu-editor-container"></div>
-            
-            <button class="btn-add" onclick="addMenuItem()">+ 手動新增一列</button>
-            <button class="btn-submit" id="btn-publish" onclick="publishMenu()">確認發布，產生連結！</button>
+  <label>🏠 店家名稱</label>
+  <input type="text" id="menu-title" placeholder="例如：週五吃炸雞">
+  
+  <label>✨ 智慧貼上 (菜名 價格)</label>
+  <textarea id="smart-area" rows="4" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
+  <button class="btn-sec" onclick="smartParse()">⚡️ 一鍵轉換</button>
 
-            <div id="result-link-box"></div>
-        </div>
-    </div>
+  <div id="item-list"></div>
+  <button class="btn-sec" onclick="addItem()">+ 手動新增一列</button>
+  
+  <div style="margin: 15px 0;">
+    <input type="checkbox" id="save-pool" style="width:auto;" checked> 
+    <label for="save-pool">同時存入便當池</label>
+  </div>
 
-    <div id="tab-group" class="tab-content">
-        <h3 class="tab-title">📋 即時訂單監控</h3>
-        <div id="order-list" class="card-box" style="min-height:200px; color: var(--text-sub);">
-            請先選擇要監控的團購活動... (此功能將在下一版完善)
-        </div>
-    </div>
-
-    <div id="tab-ledger" class="tab-content">
-        <h3 class="tab-title">💰 收款直覺帳本</h3>
-        <div id="ledger-list" class="card-box" style="padding:0;">
-            <div class="ledger-row">
-                <div><span style="font-weight:bold;">範例小明</span><span style="color:var(--text-sub); margin-left:10px;">$100</span></div>
-                <div class="pay-status paid">已付</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="tab-prompter" class="tab-content">
-        <h3 class="tab-title">📞 電話提詞機</h3>
-        <div class="prompter-box" id="prompter-list">
-             <div class="prompter-line"><span>招牌排骨飯</span><span class="prompter-qty">5</span></div>
-        </div>
-    </div>
-
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('tab-create', this)">
-            <span class="nav-icon">🚀</span><span class="nav-text">發布</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('tab-group', this)">
-            <span class="nav-icon">📋</span><span class="nav-text">監控</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('tab-ledger', this)">
-            <span class="nav-icon">💰</span><span class="nav-text">帳本</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('tab-prompter', this)">
-            <span class="nav-icon">📞</span><span class="nav-text">提詞</span>
-        </div>
-    </div>
+  <button class="btn-main" id="btn-pub" onclick="publish()">🚀 發布並產生連結</button>
+  
+  <div id="link-box"></div>
+</div>
 
 <script>
-    // ⚠️ 這裡也要填入正確的 GAS 網址
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxqBOM8VD1mZwXGfctdItrDxWs8AIxjZ38Ye9BgEPvmBzp_V2SSCaXAAAbt_fCiYI/exec"; 
+  // 初始化
+  window.onload = function() {
+    google.script.run.withSuccessHandler(renderPool).apiGetPool();
+  };
 
-    let currentMenuId = ""; // 用來存現在是哪個菜單
-    let selectedItem = "";
-    let selectedPrice = 0;
+  function renderPool(list) {
+    var sel = document.getElementById('pool-select');
+    sel.innerHTML = '<option value="">-- 請選擇 --</option>';
+    list.forEach(function(shop, idx) {
+      var opt = document.createElement('option');
+      opt.text = shop.title;
+      opt.value = JSON.stringify(shop.items);
+      sel.add(opt);
+    });
+  }
 
-    // 頁面載入時，抓取網址上的 ID
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        currentMenuId = urlParams.get('id');
+  function loadFromPool() {
+    var sel = document.getElementById('pool-select');
+    if(!sel.value) return;
+    document.getElementById('menu-title').value = sel.options[sel.selectedIndex].text;
+    var items = JSON.parse(sel.value);
+    document.getElementById('item-list').innerHTML = '';
+    items.forEach(function(item){ addItem(item.name, item.price); });
+  }
 
-        if (!currentMenuId) {
-            document.querySelector('.menu-section').innerHTML = "<h3>⚠️ 無法載入菜單</h3><p>網址缺少 ID，請由管理員提供的連結進入。</p>";
-            return;
-        }
+  // 1. 智慧辨識 (修正版)
+  function smartParse() {
+    var text = document.getElementById('smart-area').value;
+    if(!text) return alert("請先貼上文字");
+    
+    var lines = text.split('\n');
+    document.getElementById('item-list').innerHTML = ''; // 清空
+    
+    lines.forEach(function(line) {
+      var clean = line.trim();
+      if(!clean) return;
+      var match = clean.match(/(\d+)/g); // 抓取數字
+      if(match) {
+        var price = match[match.length - 1]; // 最後一個數字當價格
+        var name = clean.replace(price, '').replace(/[$.:：]/g,'').trim();
+        if(name && price) addItem(name, price);
+      }
+    });
+    document.getElementById('smart-area').value = '';
+  }
 
-        loadMenu(currentMenuId);
+  // 2. 手動新增
+  function addItem(name='', price='') {
+    var div = document.createElement('div');
+    div.className = 'item-row';
+    div.innerHTML = `
+      <input type="text" class="name" value="${name}" placeholder="菜名">
+      <input type="number" class="price" value="${price}" placeholder="$" style="width:80px;">
+      <button class="btn-del" onclick="this.parentElement.remove()">×</button>
+    `;
+    document.getElementById('item-list').appendChild(div);
+  }
+
+  // 3. 發布 (使用 google.script.run，最穩定！)
+  function publish() {
+    var title = document.getElementById('menu-title').value;
+    var rows = document.querySelectorAll('.item-row');
+    var items = [];
+    
+    rows.forEach(function(row) {
+      var n = row.querySelector('.name').value;
+      var p = row.querySelector('.price').value;
+      if(n && p) items.push({name: n, price: p});
+    });
+
+    if(!title || items.length === 0) return alert("請輸入店名並至少一道菜");
+
+    var btn = document.getElementById('btn-pub');
+    btn.disabled = true;
+    btn.innerText = "處理中...";
+
+    var data = {
+      title: title,
+      items: items,
+      saveToPool: document.getElementById('save-pool').checked
     };
 
-    // 向 GAS 請求菜單資料
-    function loadMenu(menuId) {
-        document.querySelector('.menu-section').innerHTML = "<h3>⏳ 菜單載入中...</h3>";
-        
-        fetch(`${SCRIPT_URL}?action=get_menu&id=${encodeURIComponent(menuId)}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                // 更新標題
-                document.querySelector('.header h1').innerText = `🍱 今天吃：${data.title.split('_')[1]}`; // 去掉時間戳記
-                
-                // 動態產生菜單 HTML
-                const menuContainer = document.querySelector('.menu-section');
-                menuContainer.innerHTML = '<h3>1. 選擇餐點</h3>'; // 清空 loading
-                
-                data.items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'menu-item';
-                    div.onclick = function() { selectFood(item.name, item.price, this); };
-                    div.innerHTML = `<div>${item.name}</div><div class="price">$${item.price}</div>`;
-                    menuContainer.appendChild(div);
-                });
-            } else {
-                document.querySelector('.menu-section').innerHTML = `<h3>❌ 錯誤</h3><p>${data.message}</p>`;
-            }
-        })
-        .catch(err => {
-            document.querySelector('.menu-section').innerHTML = "<h3>❌ 連線失敗</h3><p>請檢查網路</p>";
-        });
-    }
-
-    function selectFood(name, price, element) {
-        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        selectedItem = name;
-        selectedPrice = price;
-    }
-
-    function submitOrder() {
-        const name = document.getElementById('username').value;
-        const note = document.getElementById('note').value;
-        const btn = document.getElementById('btnSubmit');
-
-        if (!name) { alert("請輸入名字！"); return; }
-        if (!selectedItem) { alert("請選擇一份餐點！"); return; }
-
-        btn.disabled = true;
-        btn.innerText = "資料傳送中...";
-
-        const orderData = {
-            action: "order", // 告訴後端這是訂單
-            menuId: currentMenuId, // 重要！告訴後端要寫入哪個分頁
-            name: name,
-            item: selectedItem,
-            price: selectedPrice,
-            note: note
-        };
-
-        // 這裡不需要 no-cors，因為後端現在支援 CORS 回傳
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify(orderData)
-        }).then(res => res.json())
-        .then(json => {
-            if (json.status === "success") {
-                document.querySelector('.input-section').style.display = 'none';
-                document.querySelector('.menu-section').style.display = 'none';
-                document.getElementById('success-msg').style.display = 'block';
-            } else {
-                alert("訂購失敗：" + json.message);
-                btn.disabled = false;
-            }
-        }).catch(error => {
-            alert("發生錯誤，請稍後再試");
-            btn.disabled = false;
-        });
-    }
+    google.script.run
+      .withSuccessHandler(function(res) {
+         btn.innerText = "發布完成！";
+         var url = <?= ScriptApp.getService().getUrl() ?>; // 自動取得當前網址
+         var finalLink = url + "?id=" + encodeURIComponent(res.menuId);
+         
+         document.getElementById('link-box').style.display = 'block';
+         document.getElementById('link-box').innerHTML = 
+           '✅ 連結已產生：<br><a href="' + finalLink + '" target="_blank">' + finalLink + '</a>';
+         
+         if(data.saveToPool) google.script.run.withSuccessHandler(renderPool).apiGetPool(); // 重整選單
+      })
+      .withFailureHandler(function(err) {
+         alert("錯誤：" + err);
+         btn.disabled = false;
+      })
+      .apiCreateMenu(data);
+  }
 </script>
-
 </body>
-
-
+</html>
