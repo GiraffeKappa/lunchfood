@@ -187,7 +187,7 @@
         });
     }
 
-    // --- Part 2: 查帳功能 (增強版) ---
+  // --- Part 2: 查帳功能 ---
     function loadSheetList() {
         const sel = document.getElementById('sheet-select');
         sel.innerHTML = '<option>載入中...</option>';
@@ -198,7 +198,25 @@
             if(data.data) {
                 data.data.reverse(); 
                 data.data.forEach(name => {
-                    const displayName = name.split('_')[1] + " (" + name.split('_')[0].slice(4,8) + ")";
+                    // 原始檔名格式：20260102_1230_八方雲集
+                    const parts = name.split('_');
+                    
+                    // 解析日期：從 20260102 取出 0102
+                    const dateStr = parts[0].slice(4, 8);
+                    
+                    // 解析店名：取第3個部分 (八方雲集)
+                    // 如果店名本身有底線，用 join 接回來，避免被截斷
+                    let shopName = "未知店家";
+                    if (parts.length > 2) {
+                        shopName = parts.slice(2).join('_');
+                    } else if (parts.length === 2) {
+                         // 舊資料如果沒有店名，暫時顯示時間
+                        shopName = parts[1];
+                    }
+
+                    // 組合顯示文字：八方雲集 (0102)
+                    const displayName = `${shopName} (${dateStr})`;
+                    
                     sel.add(new Option(displayName, name));
                 });
             } else {
@@ -207,7 +225,7 @@
         })
         .catch(err => {
             sel.innerHTML = '<option>連線失敗</option>';
-            alert("連線錯誤：請檢查 GAS_URL 是否正確！\n" + err);
+            console.error(err);
         });
     }
 
@@ -293,4 +311,5 @@
 </script>
 </body>
 </html>
+
 
