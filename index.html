@@ -13,27 +13,25 @@
         .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
         .price { color: #d32f2f; font-weight: bold; }
         
-        /* 表單控制項樣式優化 */
         .form-group { margin-top: 15px; }
         input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         
-        /* 數量與總金額特別樣式 */
-        .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
-        .qty-input { width: 80px; text-align: center; font-weight: bold; }
-        .total-display { 
-            margin-top: 20px; 
-            padding: 15px; 
-            background: #fff0e0; 
-            border-radius: 8px; 
-            text-align: right; 
-            font-size: 1.2rem; 
-            font-weight: bold; 
-            color: #FF6B35; 
-            border: 1px dashed #FF6B35;
-        }
+        .control-panel { background: #fafafa; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; }
+        .row { display: flex; gap: 10px; align-items: center; }
+        .qty-input { width: 60px; text-align: center; font-weight: bold; }
+        
+        /* 購物車樣式 */
+        .cart-box { margin-top: 20px; border-top: 2px dashed #FF6B35; padding-top: 10px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #fff0e0; padding: 8px 12px; margin-bottom: 5px; border-radius: 6px; font-size: 0.9rem; }
+        .del-item { color: red; cursor: pointer; font-weight: bold; padding: 0 5px; }
 
-        button { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-weight: bold; font-size: 18px; margin-top: 20px; cursor: pointer; }
-        button:disabled { background: #ccc; }
+        .btn-add { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .btn-add:disabled { background: #ccc; }
+
+        .btn-submit { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-weight: bold; font-size: 18px; margin-top: 20px; cursor: pointer; }
+        .btn-submit:disabled { background: #ccc; }
+        
+        #total-display { text-align: right; font-size: 1.2rem; font-weight: bold; color: #FF6B35; margin-top: 10px; }
         #success-msg { display: none; text-align: center; padding: 30px; color: green; font-weight: bold; font-size: 1.2rem; }
     </style>
 </head>
@@ -46,38 +44,42 @@
 <div class="card" id="order-form">
     <div id="menu-list"></div>
     
-    <div style="margin-top:20px; padding-top:10px; border-top: 2px dashed #eee;">
-        
-        <div class="form-group">
-            <input type="text" id="username" placeholder="你的名字 (必填)">
-        </div>
-
+    <div class="control-panel">
         <div class="row">
-            <div style="flex: 1;">
-                <input type="number" id="quantity" class="qty-input" value="1" min="1" onchange="updateTotal()" oninput="updateTotal()"> 
-                <span style="font-size: 0.9rem; color: #666;">份數</span>
-            </div>
             <div style="flex: 2;">
-                <input type="text" id="note" placeholder="備註 (飯少/不蔥)">
+                <span id="selected-name" style="color:#666; font-size:0.9rem;">請選擇上方餐點</span>
+            </div>
+            <div style="flex: 1;">
+                <input type="number" id="quantity" class="qty-input" value="1" min="1"> 
+                <span style="font-size: 0.8rem;">份</span>
             </div>
         </div>
-
-        <div id="total-display" class="total-display">
-            總金額：$0
-        </div>
-
-        <button id="submit-btn" onclick="submitOrder()">🚀 確認送出</button>
+        <button id="add-btn" class="btn-add" onclick="addToCart()" disabled>➕ 加入清單</button>
     </div>
+
+    <div class="cart-box" id="cart-box" style="display:none;">
+        <h4>🛒 已選餐點</h4>
+        <div id="cart-list"></div>
+        <div id="total-display">總金額：$0</div>
+    </div>
+    
+    <div class="form-group">
+        <input type="text" id="username" placeholder="你的名字 (必填)">
+        <input type="text" id="note" placeholder="整單備註 (選填)" style="margin-top:10px;">
+    </div>
+
+    <button id="submit-btn" class="btn-submit" onclick="submitOrder()">🚀 確認送出訂單</button>
 </div>
 
-<div id="success-msg">✅ 訂購成功！已寫入資料庫。</div>
+<div id="success-msg">✅ 訂購成功！<br>已合併寫入資料庫。</div>
 
 <script>
-    // ⚠️⚠️⚠️ 請填入你的 GAS 網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
+    // ⚠️⚠️⚠️ 請確認這裡是最新的 GAS 網址 (結尾是 /exec) ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
     let currentMenuId = "";
     let selectedItem = null;
+    let cart = []; // 購物車陣列
 
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
@@ -103,7 +105,9 @@
                         document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
                         div.classList.add('active');
                         selectedItem = item;
-                        updateTotal(); // 選擇餐點後立即更新總金額
+                        document.getElementById('selected-name').innerText = item.name + ` ($${item.price})`;
+                        document.getElementById('add-btn').disabled = false;
+                        document.getElementById('add-btn').innerText = `➕ 加入 ${item.name}`;
                     };
                     list.appendChild(div);
                 });
@@ -113,52 +117,91 @@
         });
     };
 
-    // 新增：更新總金額函式
-    function updateTotal() {
+    function addToCart() {
+        if (!selectedItem) return;
+        
         const qtyInput = document.getElementById('quantity');
         let qty = parseInt(qtyInput.value);
-        
-        // 防呆：如果輸入小於1或不是數字，強制設為1
-        if(isNaN(qty) || qty < 1) {
-            qty = 1;
-            qtyInput.value = 1;
+        if(isNaN(qty) || qty < 1) qty = 1;
+
+        // 加入購物車
+        cart.push({
+            name: selectedItem.name,
+            price: parseInt(selectedItem.price),
+            qty: qty,
+            subtotal: selectedItem.price * qty
+        });
+
+        // 重置輸入
+        qtyInput.value = 1;
+        renderCart();
+    }
+
+    function renderCart() {
+        const list = document.getElementById('cart-list');
+        const cartBox = document.getElementById('cart-box');
+        list.innerHTML = '';
+
+        if (cart.length === 0) {
+            cartBox.style.display = 'none';
+            return;
         }
 
-        const totalDisplay = document.getElementById('total-display');
-        
-        if (selectedItem) {
-            const total = selectedItem.price * qty;
-            totalDisplay.innerText = `總金額：$${total}`;
-            // 視覺提示：讓字體閃爍一下或變色（選用）
-            totalDisplay.style.color = "#d32f2f";
-        } else {
-            totalDisplay.innerText = "請先選擇餐點";
-            totalDisplay.style.color = "#999";
-        }
+        cartBox.style.display = 'block';
+        let total = 0;
+
+        cart.forEach((item, index) => {
+            total += item.subtotal;
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML = `
+                <span>${item.name} x${item.qty}</span>
+                <span style="display:flex; align-items:center;">
+                    $${item.subtotal} 
+                    <span class="del-item" onclick="removeFromCart(${index})">×</span>
+                </span>
+            `;
+            list.appendChild(div);
+        });
+
+        document.getElementById('total-display').innerText = `總金額：$${total}`;
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        renderCart();
     }
 
     function submitOrder() {
         const name = document.getElementById('username').value;
         const note = document.getElementById('note').value;
-        const qty = parseInt(document.getElementById('quantity').value);
 
-        if(!name || !selectedItem) return alert("請輸入名字並選擇餐點！");
+        if(!name) return alert("請輸入名字！");
+        if(cart.length === 0) return alert("購物車是空的，請先加入餐點！");
 
         const btn = document.getElementById('submit-btn');
         btn.disabled = true;
         btn.innerText = "傳送中...";
 
-        // 計算總金額
-        const totalAmount = selectedItem.price * qty;
+        // 資料合併邏輯
+        // 品項欄位變成：排骨飯x1, 雞腿飯x1
+        let finalItemStr = cart.map(i => `${i.name}x${i.qty}`).join(', ');
+        // 總數量 (雖然意義不大，但還是加總一下)
+        let totalQty = cart.reduce((acc, cur) => acc + cur.qty, 0);
+        // 總金額
+        let totalAmount = cart.reduce((acc, cur) => acc + cur.subtotal, 0);
+
+        // 如果只有一項，讓格式單純一點
+        let priceToSend = totalAmount; // 記錄總價為單價 (為了報表方便)
 
         const payload = {
             action: 'order',
             menuId: currentMenuId,
             name: name,
-            item: selectedItem.name,
-            price: selectedItem.price,
-            quantity: qty,          // 新增：數量
-            totalAmount: totalAmount, // 新增：總金額
+            item: finalItemStr,     // 合併後的品項字串
+            price: totalAmount,     // 這裡直接傳總金額當作 price，方便查帳
+            quantity: totalQty,     // 總份數
+            totalAmount: totalAmount, // 總金額
             note: note
         };
 
@@ -174,12 +217,10 @@
             } else {
                 alert("錯誤：" + json.message);
                 btn.disabled = false;
-                btn.innerText = "🚀 確認送出";
+                btn.innerText = "🚀 確認送出訂單";
             }
         });
     }
 </script>
 </body>
 </html>
-
-
