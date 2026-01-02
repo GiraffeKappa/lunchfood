@@ -198,29 +198,30 @@
             if(data.data) {
                 data.data.reverse(); 
                 data.data.forEach(name => {
-                    // 原始檔名格式：20260102_1230_八方雲集
+                    // name 的格式預期為：20260102_1245_店家名稱
                     const parts = name.split('_');
                     
-                    // 解析日期：從 20260102 取出 0102
+                    // 1. 取出日期 (0102)
                     const dateStr = parts[0].slice(4, 8);
                     
-                    // 解析店名：取第3個部分 (八方雲集)
-                    // 如果店名本身有底線，用 join 接回來，避免被截斷
-                    let shopName = "未知店家";
-                    if (parts.length > 2) {
-                        shopName = parts.slice(2).join('_');
-                    } else if (parts.length === 2) {
-                         // 舊資料如果沒有店名，暫時顯示時間
-                        shopName = parts[1];
+                    let displayName = "";
+
+                    // 2. 判斷是否有店名
+                    if (parts.length >= 3) {
+                        // ✅ 新格式：有店名 (取第3部分之後的所有字)
+                        const shopName = parts.slice(2).join('_');
+                        displayName = `${shopName} (${dateStr})`;
+                    } else {
+                        // ⚠️ 舊格式：只有 Date_Time，沒有店名
+                        // 為了避免混淆，我們顯示時間，並標註 (舊)
+                        const timeStr = parts[1] || "未知時間";
+                        displayName = `(無店名) ${timeStr} (${dateStr})`;
                     }
 
-                    // 組合顯示文字：八方雲集 (0102)
-                    const displayName = `${shopName} (${dateStr})`;
-                    
                     sel.add(new Option(displayName, name));
                 });
             } else {
-                alert("無法讀取列表，請確認 GAS 部署是否正確");
+                alert("列表讀取失敗");
             }
         })
         .catch(err => {
@@ -311,5 +312,6 @@
 </script>
 </body>
 </html>
+
 
 
