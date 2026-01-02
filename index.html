@@ -12,7 +12,26 @@
         .menu-item:hover { background: #fffbe6; }
         .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
         .price { color: #d32f2f; font-weight: bold; }
-        input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        /* 表單控制項樣式優化 */
+        .form-group { margin-top: 15px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        
+        /* 數量與總金額特別樣式 */
+        .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+        .qty-input { width: 80px; text-align: center; font-weight: bold; }
+        .total-display { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background: #fff0e0; 
+            border-radius: 8px; 
+            text-align: right; 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            color: #FF6B35; 
+            border: 1px dashed #FF6B35;
+        }
+
         button { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-weight: bold; font-size: 18px; margin-top: 20px; cursor: pointer; }
         button:disabled { background: #ccc; }
         #success-msg { display: none; text-align: center; padding: 30px; color: green; font-weight: bold; font-size: 1.2rem; }
@@ -28,8 +47,25 @@
     <div id="menu-list"></div>
     
     <div style="margin-top:20px; padding-top:10px; border-top: 2px dashed #eee;">
-        <input type="text" id="username" placeholder="你的名字 (必填)">
-        <input type="text" id="note" placeholder="備註 (飯少/不蔥)">
+        
+        <div class="form-group">
+            <input type="text" id="username" placeholder="你的名字 (必填)">
+        </div>
+
+        <div class="row">
+            <div style="flex: 1;">
+                <input type="number" id="quantity" class="qty-input" value="1" min="1" onchange="updateTotal()" oninput="updateTotal()"> 
+                <span style="font-size: 0.9rem; color: #666;">份數</span>
+            </div>
+            <div style="flex: 2;">
+                <input type="text" id="note" placeholder="備註 (飯少/不蔥)">
+            </div>
+        </div>
+
+        <div id="total-display" class="total-display">
+            總金額：$0
+        </div>
+
         <button id="submit-btn" onclick="submitOrder()">🚀 確認送出</button>
     </div>
 </div>
@@ -67,6 +103,7 @@
                         document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
                         div.classList.add('active');
                         selectedItem = item;
+                        updateTotal(); // 選擇餐點後立即更新總金額
                     };
                     list.appendChild(div);
                 });
@@ -76,9 +113,34 @@
         });
     };
 
+    // 新增：更新總金額函式
+    function updateTotal() {
+        const qtyInput = document.getElementById('quantity');
+        let qty = parseInt(qtyInput.value);
+        
+        // 防呆：如果輸入小於1或不是數字，強制設為1
+        if(isNaN(qty) || qty < 1) {
+            qty = 1;
+            qtyInput.value = 1;
+        }
+
+        const totalDisplay = document.getElementById('total-display');
+        
+        if (selectedItem) {
+            const total = selectedItem.price * qty;
+            totalDisplay.innerText = `總金額：$${total}`;
+            // 視覺提示：讓字體閃爍一下或變色（選用）
+            totalDisplay.style.color = "#d32f2f";
+        } else {
+            totalDisplay.innerText = "請先選擇餐點";
+            totalDisplay.style.color = "#999";
+        }
+    }
+
     function submitOrder() {
         const name = document.getElementById('username').value;
         const note = document.getElementById('note').value;
+        const qty = parseInt(document.getElementById('quantity').value);
 
         if(!name || !selectedItem) return alert("請輸入名字並選擇餐點！");
 
@@ -86,12 +148,17 @@
         btn.disabled = true;
         btn.innerText = "傳送中...";
 
+        // 計算總金額
+        const totalAmount = selectedItem.price * qty;
+
         const payload = {
             action: 'order',
             menuId: currentMenuId,
             name: name,
             item: selectedItem.name,
             price: selectedItem.price,
+            quantity: qty,          // 新增：數量
+            totalAmount: totalAmount, // 新增：總金額
             note: note
         };
 
@@ -107,6 +174,7 @@
             } else {
                 alert("錯誤：" + json.message);
                 btn.disabled = false;
+                btn.innerText = "🚀 確認送出";
             }
         });
     }
