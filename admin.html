@@ -7,26 +7,21 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 500px; }
-        
-        /* 分頁按鈕樣式 */
         .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; }
         .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
         h2 { text-align: center; color: #FF6B35; margin-top: 0; }
         label { display: block; margin: 15px 0 5px; font-weight: bold; color: #333; }
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        
         .btn-main { background: #FF6B35; color: white; }
         .btn-sec { background: #e4e6eb; color: #333; }
+        .btn-rand { background: #9C27B0; color: white; } /* 紫色隨機按鈕 */
         .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
         .del-btn { background: #ffebee; color: red; width: auto; padding: 0 15px; }
         #result-box { display: none; background: #e8f5e9; padding: 15px; margin-top: 20px; border-radius: 8px; word-break: break-all; }
-
-        /* 查帳列表樣式 */
         .order-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
         .order-info { flex-grow: 1; }
         .order-name { font-weight: bold; font-size: 1.1rem; }
@@ -35,6 +30,8 @@
         .status-unpaid { background: #eee; color: #666; }
         .status-paid { background: #4CAF50; color: white; }
         .summary-box { background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #d84315; }
+        /* 按鈕群組 */
+        .btn-group { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
@@ -48,7 +45,11 @@
     <div id="tab-create" class="tab-content active">
         <h2>建立新訂餐</h2>
         <label>📂 從便當池載入</label>
-        <select id="pool-select" onchange="loadFromPool()"><option>載入中...</option></select>
+        <select id="pool-select" onchange="loadFromPool()">
+            <option value="">-- 請選擇 --</option>
+        </select>
+        
+        <button class="btn-rand" onclick="randomPick()">🎲 隨機選一個店家</button>
 
         <label>🏠 店家名稱</label>
         <input type="text" id="shop-title" placeholder="例如：快樂便當">
@@ -82,8 +83,8 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請確認填入正確的 GAS 網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
+    // ⚠️⚠️⚠️ 請填入你的 GAS 網址 (與 index.html 同一個) ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
     window.onload = function() {
         fetchPool();
@@ -92,24 +93,49 @@
     function switchTab(tab) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        
         if (tab === 'create') {
             document.getElementById('tab-create').classList.add('active');
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
         } else {
             document.getElementById('tab-manage').classList.add('active');
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            loadSheetList(); // 切換過來時自動載入列表
+            loadSheetList(); 
         }
     }
 
-    // --- Part 1: 發布功能 (維持原樣) ---
+    // --- Part 1: 發布功能 ---
     function fetchPool() {
         fetch(GAS_URL + "?action=get_pool").then(res=>res.json()).then(data => {
             const sel = document.getElementById('pool-select');
             sel.innerHTML = '<option value="">-- 請選擇 --</option>';
             if(data.data) data.data.forEach(shop => sel.add(new Option(shop.title, JSON.stringify(shop.items))));
         });
+    }
+
+    // 新增：隨機選取功能
+    function randomPick() {
+        const sel = document.getElementById('pool-select');
+        const options = sel.options;
+        if (options.length <= 1) return alert("便當池是空的，無法隨機選取！");
+
+        // 隨機選一個 index (跳過第一個 "-- 請選擇 --")
+        const randIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
+        sel.selectedIndex = randIndex;
+        
+        // 觸發載入
+        loadFromPool();
+        alert("🎲 已為您選中：" + sel.options[randIndex].text);
+    }
+
+    function loadFromPool() {
+        const sel = document.getElementById('pool-select');
+        if(!sel.value) return;
+        document.getElementById('shop-title').value = sel.options[sel.selectedIndex].text;
+        document.getElementById('item-list').innerHTML = '';
+        JSON.parse(sel.value).forEach(i => addItem(i.name, i.price));
+        
+        // 新增：如果是從池子載入，自動取消勾選「存入便當池」
+        document.getElementById('save-pool').checked = false;
     }
 
     function smartParse() {
@@ -125,6 +151,8 @@
             }
         });
         document.getElementById('paste-area').value = '';
+        // 手動貼上視為新資料，預設勾選存入
+        document.getElementById('save-pool').checked = true;
     }
 
     function addItem(name='', price='') {
@@ -132,14 +160,6 @@
         div.className = 'item-row';
         div.innerHTML = `<input type="text" class="name" value="${name}" placeholder="菜名"><input type="number" class="price" value="${price}" placeholder="$" style="width:80px"><button class="del-btn" onclick="this.parentElement.remove()">×</button>`;
         document.getElementById('item-list').appendChild(div);
-    }
-    
-    function loadFromPool() {
-        const sel = document.getElementById('pool-select');
-        if(!sel.value) return;
-        document.getElementById('shop-title').value = sel.options[sel.selectedIndex].text;
-        document.getElementById('item-list').innerHTML = '';
-        JSON.parse(sel.value).forEach(i => addItem(i.name, i.price));
     }
 
     function publish() {
@@ -174,18 +194,15 @@
         });
     }
 
-    // --- Part 2: 查帳功能 (新功能) ---
-    
-    // 1. 載入所有已開團的清單
+    // --- Part 2: 查帳功能 ---
     function loadSheetList() {
         const sel = document.getElementById('sheet-select');
         sel.innerHTML = '<option>載入中...</option>';
         fetch(GAS_URL + "?action=get_sheets").then(res => res.json()).then(data => {
             sel.innerHTML = '<option value="">-- 請選擇要查帳的團 --</option>';
             if(data.data) {
-                data.data.reverse(); // 讓最新的在最上面
+                data.data.reverse(); 
                 data.data.forEach(name => {
-                    // 只顯示店名 (去掉前面的時間戳記)，但 value 留完整 ID
                     const displayName = name.split('_')[1] + " (" + name.split('_')[0].slice(4,8) + ")";
                     sel.add(new Option(displayName, name));
                 });
@@ -193,7 +210,6 @@
         });
     }
 
-    // 2. 載入該團的訂單
     function loadOrders() {
         const menuId = document.getElementById('sheet-select').value;
         if(!menuId) return;
@@ -213,7 +229,7 @@
 
                 data.orders.forEach(order => {
                     count++;
-                    totalMoney += parseInt(order.price);
+                    totalMoney += parseInt(order.price); // 在新版邏輯中，order.price 存的就是該人總金額
                     if(order.paid) paidMoney += parseInt(order.price);
 
                     const div = document.createElement('div');
@@ -223,15 +239,15 @@
                     
                     div.innerHTML = `
                         <div class="order-info">
-                            <div class="order-name">${order.name} <span style="font-weight:normal; font-size:0.9rem">(${order.item})</span></div>
-                            <div class="order-detail">$${order.price} | ${order.note || '無備註'}</div>
+                            <div class="order-name">${order.name}</div>
+                            <div class="order-detail" style="color:#d32f2f; font-weight:bold;">${order.item}</div>
+                            <div class="order-detail">總計 $${order.price} | ${order.note || ''}</div>
                         </div>
                         <button class="pay-btn ${btnClass}" onclick="togglePay('${menuId}', ${order.row}, this, ${order.price})">${btnText}</button>
                     `;
                     list.appendChild(div);
                 });
 
-                // 更新統計
                 const summary = document.getElementById('summary-area');
                 summary.style.display = 'block';
                 summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
@@ -241,12 +257,8 @@
         });
     }
 
-    // 3. 切換付款狀態
     function togglePay(menuId, row, btn, price) {
-        // 先在前端變色，讓使用者覺得很快
         const isPaid = btn.innerText.includes('已付');
-        
-        // 鎖定按鈕防止連點
         btn.disabled = true;
         btn.innerText = '更新中...';
 
@@ -263,19 +275,13 @@
                     btn.className = 'pay-btn status-unpaid';
                     btn.innerText = '未付';
                 }
-                // 重新整理列表以更新總金額 (或者也可以寫複雜邏輯在前端更新，但直接 reload 最準)
                 loadOrders(); 
             } else {
                 alert("更新失敗");
-                btn.innerText = isPaid ? '✅ 已付' : '未付'; // 恢復原狀
+                btn.innerText = isPaid ? '✅ 已付' : '未付';
             }
         });
     }
 </script>
 </body>
 </html>
-
-
-
-
-
