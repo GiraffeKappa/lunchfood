@@ -3,25 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤴 天龍人訂餐系統後台 (除錯增強版)</title>
+    <title>🤴 天龍人訂餐系統後台 (統計增強版)</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 500px; }
+        
+        /* 分頁按鈕 */
         .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; }
-        .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; }
-        .tab-content { display: none; }
+        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; transition: 0.3s; }
+        .tab-btn:hover { background: #f9f9f9; }
+        .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; background: #fff; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
         h2 { text-align: center; color: #FF6B35; margin-top: 0; }
         label { display: block; margin: 15px 0 5px; font-weight: bold; color: #333; }
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        
         .btn-main { background: #FF6B35; color: white; }
         .btn-sec { background: #e4e6eb; color: #333; }
         .btn-rand { background: #9C27B0; color: white; } 
+        .btn-copy { background: #008CBA; color: white; }
+
+        /* 列表樣式 */
         .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
         .del-btn { background: #ffebee; color: red; width: auto; padding: 0 15px; }
         #result-box { display: none; background: #e8f5e9; padding: 15px; margin-top: 20px; border-radius: 8px; word-break: break-all; }
+        
+        /* 查帳與統計樣式 */
         .order-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
         .order-info { flex-grow: 1; }
         .order-name { font-weight: bold; font-size: 1.1rem; }
@@ -30,6 +41,15 @@
         .status-unpaid { background: #eee; color: #666; }
         .status-paid { background: #4CAF50; color: white; }
         .summary-box { background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #d84315; }
+
+        /* 統計表格 */
+        .stats-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .stats-table th, .stats-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        .stats-table th { background: #f8f8f8; color: #555; }
+        .stats-total-row { font-weight: bold; background: #fffbe6; }
+        
+        /* 複製文字區 */
+        .copy-area { background: #333; color: #fff; padding: 15px; border-radius: 8px; margin-top: 15px; font-family: monospace; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -38,6 +58,7 @@
     <div class="tabs">
         <div class="tab-btn active" onclick="switchTab('create')">🚀 發布菜單</div>
         <div class="tab-btn" onclick="switchTab('manage')">💰 收款管理</div>
+        <div class="tab-btn" onclick="switchTab('stats')">📊 訂單統計</div>
     </div>
 
     <div id="tab-create" class="tab-content active">
@@ -67,7 +88,7 @@
     <div id="tab-manage" class="tab-content">
         <h2>收款監控</h2>
         <label>選擇要查帳的團購</label>
-        <select id="sheet-select" onchange="loadOrders()">
+        <select id="sheet-select" onchange="loadOrders('manage')">
             <option value="">-- 請選擇 --</option>
         </select>
         <button class="btn-sec" onclick="loadSheetList()">🔄 重新整理列表</button>
@@ -75,11 +96,44 @@
         <div id="summary-area" class="summary-box" style="display:none"></div>
         <div id="order-list"></div>
     </div>
+
+    <div id="tab-stats" class="tab-content">
+        <h2>📊 訂購統計表</h2>
+        <p style="color:#666; font-size:0.9rem; text-align:center;">選擇團購單，系統自動幫您加總數量</p>
+        
+        <label>選擇要統計的團購</label>
+        <select id="sheet-select-stats" onchange="loadOrders('stats')">
+            <option value="">-- 請選擇 --</option>
+        </select>
+        <button class="btn-sec" onclick="loadSheetList()">🔄 重新整理列表</button>
+
+        <div id="stats-content" style="display:none;">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>品項名稱</th>
+                        <th width="60">數量</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-tbody"></tbody>
+                <tfoot>
+                    <tr class="stats-total-row">
+                        <td>總計</td>
+                        <td id="stats-total-qty">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <label>📋 訂餐文字 (可直接複製)</label>
+            <div class="copy-area" id="copy-text">載入中...</div>
+            <button class="btn-copy" onclick="copyToClipboard()">📋 複製內容</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請務必確認這裡填入的是您自己的 GAS 網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
+    // ⚠️⚠️⚠️ 請確認這裡是您正確的 GAS 網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
     window.onload = function() {
         fetchPool();
@@ -88,13 +142,18 @@
     function switchTab(tab) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
         if (tab === 'create') {
             document.getElementById('tab-create').classList.add('active');
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
-        } else {
+        } else if (tab === 'manage') {
             document.getElementById('tab-manage').classList.add('active');
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
             loadSheetList(); 
+        } else if (tab === 'stats') {
+            document.getElementById('tab-stats').classList.add('active');
+            document.querySelectorAll('.tab-btn')[2].classList.add('active');
+            loadSheetList(); // 統計頁面也要載入選單
         }
     }
 
@@ -106,18 +165,17 @@
             const sel = document.getElementById('pool-select');
             sel.innerHTML = '<option value="">-- 請選擇 --</option>';
             if(data.data) data.data.forEach(shop => sel.add(new Option(shop.title, JSON.stringify(shop.items))));
-        })
-        .catch(err => console.error("便當池讀取失敗:", err));
+        });
     }
 
     function randomPick() {
         const sel = document.getElementById('pool-select');
         const options = sel.options;
-        if (options.length <= 1) return alert("便當池是空的，無法隨機選取！");
+        if (options.length <= 1) return alert("便當池是空的！");
         const randIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
         sel.selectedIndex = randIndex;
         loadFromPool();
-        alert("🎲 已為您選中：" + sel.options[randIndex].text);
+        alert("🎲 選中：" + sel.options[randIndex].text);
     }
 
     function loadFromPool() {
@@ -181,137 +239,174 @@
                 alert("失敗：" + json.message);
                 btn.disabled = false;
             }
-        }).catch(err => {
-            alert("發布失敗，請檢查網路或 GAS 網址");
-            btn.disabled = false;
         });
     }
 
-  // --- Part 2: 查帳功能 ---
+    // --- Part 2 & 3: 查帳與統計共用 ---
     function loadSheetList() {
-        const sel = document.getElementById('sheet-select');
-        sel.innerHTML = '<option>載入中...</option>';
         fetch(GAS_URL + "?action=get_sheets")
         .then(res => res.json())
         .then(data => {
-            sel.innerHTML = '<option value="">-- 請選擇要查帳的團 --</option>';
-            if(data.data) {
-                data.data.reverse(); 
-                data.data.forEach(name => {
-                    // name 的格式預期為：20260102_1245_店家名稱
-                    const parts = name.split('_');
-                    
-                    // 1. 取出日期 (0102)
-                    const dateStr = parts[0].slice(4, 8);
-                    
-                    let displayName = "";
-
-                    // 2. 判斷是否有店名
-                    if (parts.length >= 3) {
-                        // ✅ 新格式：有店名 (取第3部分之後的所有字)
-                        const shopName = parts.slice(2).join('_');
-                        displayName = `${shopName} (${dateStr})`;
-                    } else {
-                        // ⚠️ 舊格式：只有 Date_Time，沒有店名
-                        // 為了避免混淆，我們顯示時間，並標註 (舊)
-                        const timeStr = parts[1] || "未知時間";
-                        displayName = `(無店名) ${timeStr} (${dateStr})`;
-                    }
-
-                    sel.add(new Option(displayName, name));
-                });
-            } else {
-                alert("列表讀取失敗");
-            }
-        })
-        .catch(err => {
-            sel.innerHTML = '<option>連線失敗</option>';
-            console.error(err);
+            // 同時更新兩個 select
+            const selects = [document.getElementById('sheet-select'), document.getElementById('sheet-select-stats')];
+            
+            selects.forEach(sel => {
+                sel.innerHTML = '<option value="">-- 請選擇要操作的團 --</option>';
+                if(data.data) {
+                    const list = [...data.data].reverse();
+                    list.forEach(name => {
+                        const parts = name.split('_');
+                        const dateStr = parts[0].slice(4, 8);
+                        let displayName = "";
+                        if (parts.length >= 3) {
+                            const shopName = parts.slice(2).join('_');
+                            displayName = `${shopName} (${dateStr})`;
+                        } else {
+                            const timeStr = parts[1] || "";
+                            displayName = `(無店名) ${timeStr} (${dateStr})`;
+                        }
+                        sel.add(new Option(displayName, name));
+                    });
+                }
+            });
         });
     }
 
-    function loadOrders() {
-        const menuId = document.getElementById('sheet-select').value;
+    // 核心函式：載入訂單 (根據 mode 決定是查帳還是統計)
+    function loadOrders(mode) {
+        let selectId = mode === 'manage' ? 'sheet-select' : 'sheet-select-stats';
+        const menuId = document.getElementById(selectId).value;
         if(!menuId) return;
 
-        const list = document.getElementById('order-list');
-        list.innerHTML = '<p style="text-align:center">載入訂單中...</p>';
-        
+        // UI 初始化
+        if (mode === 'manage') {
+            document.getElementById('order-list').innerHTML = '<p style="text-align:center">載入中...</p>';
+        } else {
+            document.getElementById('stats-content').style.display = 'none';
+        }
+
         fetch(GAS_URL + "?action=get_orders&menuId=" + menuId)
         .then(res => res.json())
         .then(data => {
-            list.innerHTML = '';
-            
-            if(data.status === 'success' && data.orders) {
-                let totalMoney = 0;
-                let paidMoney = 0;
-                let count = 0;
+            if(data.status !== 'success') return alert("讀取失敗");
 
-                data.orders.forEach(order => {
-                    count++;
-                    // 這裡改為更安全的解析，防止 price 是字串導致錯誤
-                    let price = parseInt(order.price) || 0; 
-                    totalMoney += price;
-                    if(order.paid) paidMoney += price;
-
-                    const div = document.createElement('div');
-                    div.className = 'order-row';
-                    const btnClass = order.paid ? 'status-paid' : 'status-unpaid';
-                    const btnText = order.paid ? '✅ 已付' : '未付';
-                    
-                    div.innerHTML = `
-                        <div class="order-info">
-                            <div class="order-name">${order.name}</div>
-                            <div class="order-detail" style="color:#d32f2f; font-weight:bold;">${order.item}</div>
-                            <div class="order-detail">總計 $${price} | ${order.note || ''}</div>
-                        </div>
-                        <button class="pay-btn ${btnClass}" onclick="togglePay('${menuId}', ${order.row}, this, ${price})">${btnText}</button>
-                    `;
-                    list.appendChild(div);
-                });
-
-                const summary = document.getElementById('summary-area');
-                summary.style.display = 'block';
-                summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
-
-                if(count === 0) list.innerHTML = '<p style="text-align:center;color:#666">這張單目前還沒有人下單喔</p>';
+            if (mode === 'manage') {
+                renderManageList(menuId, data.orders);
             } else {
-                 list.innerHTML = `<p style="text-align:center;color:red">讀取錯誤：${data.message || '未知錯誤'}</p>`;
+                renderStats(data.orders);
             }
-        })
-        .catch(err => {
-             list.innerHTML = `<p style="text-align:center;color:red">系統錯誤：${err}</p>`;
         });
     }
 
-    function togglePay(menuId, row, btn, price) {
-        const isPaid = btn.innerText.includes('已付');
-        btn.disabled = true;
-        btn.innerText = '更新中...';
+    // 渲染查帳列表
+    function renderManageList(menuId, orders) {
+        const list = document.getElementById('order-list');
+        list.innerHTML = '';
+        let totalMoney = 0;
+        let paidMoney = 0;
 
+        orders.forEach(order => {
+            let price = parseInt(order.price) || 0;
+            totalMoney += price;
+            if(order.paid) paidMoney += price;
+
+            const div = document.createElement('div');
+            div.className = 'order-row';
+            const btnClass = order.paid ? 'status-paid' : 'status-unpaid';
+            const btnText = order.paid ? '✅ 已付' : '未付';
+            
+            div.innerHTML = `
+                <div class="order-info">
+                    <div class="order-name">${order.name}</div>
+                    <div class="order-detail" style="color:#d32f2f; font-weight:bold;">${order.item}</div>
+                    <div class="order-detail">總計 $${price} | ${order.note || ''}</div>
+                </div>
+                <button class="pay-btn ${btnClass}" onclick="togglePay('${menuId}', ${order.row}, this, ${price})">${btnText}</button>
+            `;
+            list.appendChild(div);
+        });
+
+        const summary = document.getElementById('summary-area');
+        summary.style.display = 'block';
+        summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
+        
+        if(orders.length === 0) list.innerHTML = '<p style="text-align:center;color:#666">目前無訂單</p>';
+    }
+
+    // 渲染統計頁面 (新功能核心邏輯)
+    function renderStats(orders) {
+        const tbody = document.getElementById('stats-tbody');
+        tbody.innerHTML = '';
+        const summary = {}; // 用來存 { "排骨飯": 5, "雞腿飯": 2 }
+        let totalQty = 0;
+
+        // 1. 拆解與加總
+        orders.forEach(order => {
+            // order.item 格式可能是 "排骨飯x1, 雞腿飯x2"
+            if (!order.item) return;
+
+            const items = order.item.split(','); // 用逗號切分多項
+            items.forEach(itemStr => {
+                // itemStr 可能是 "排骨飯x1" 或 " 排骨飯x2 " (有空白)
+                let parts = itemStr.split('x');
+                let name = parts[0].trim();
+                let qty = 1;
+
+                if (parts.length > 1) {
+                    qty = parseInt(parts[1]) || 1;
+                }
+
+                if (summary[name]) {
+                    summary[name] += qty;
+                } else {
+                    summary[name] = qty;
+                }
+                totalQty += qty;
+            });
+        });
+
+        // 2. 顯示到表格 & 準備複製文字
+        let copyStr = "";
+        
+        for (const [name, qty] of Object.entries(summary)) {
+            // 表格列
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${name}</td><td>${qty}</td>`;
+            tbody.appendChild(tr);
+
+            // 文字字串
+            copyStr += `${name} x${qty}\n`;
+        }
+
+        // 3. 更新總數
+        document.getElementById('stats-total-qty').innerText = totalQty;
+        document.getElementById('copy-text').innerText = copyStr || "無訂購資料";
+        document.getElementById('stats-content').style.display = 'block';
+    }
+
+    function togglePay(menuId, row, btn, price) {
+        btn.disabled = true;
+        btn.innerText = '...';
         fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'toggle_payment', menuId: menuId, row: row })
         }).then(res => res.json()).then(json => {
             btn.disabled = false;
             if(json.status === 'success') {
-                if(json.newStatus === '已付') {
-                    btn.className = 'pay-btn status-paid';
-                    btn.innerText = '✅ 已付';
-                } else {
-                    btn.className = 'pay-btn status-unpaid';
-                    btn.innerText = '未付';
-                }
-                loadOrders(); 
+                loadOrders('manage'); // 重新整理
             } else {
-                alert("更新失敗");
-                btn.innerText = isPaid ? '✅ 已付' : '未付';
+                alert("失敗");
+                btn.innerText = '重試';
             }
+        });
+    }
+
+    function copyToClipboard() {
+        const text = document.getElementById('copy-text').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("已複製到剪貼簿！可直接貼給老闆。");
         });
     }
 </script>
 </body>
 </html>
-
-
-
