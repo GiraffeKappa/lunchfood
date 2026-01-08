@@ -257,4 +257,31 @@
 
                 const summary = document.getElementById('summary-area');
                 summary.style.display = 'block';
-                summary.innerHTML
+                summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
+                
+                if(data.orders.length === 0) list.innerHTML = '<p style="text-align:center;color:#666">目前無訂單</p>';
+            } else {
+                 list.innerHTML = '<p style="text-align:center;color:red">讀取失敗</p>';
+            }
+        });
+    }
+
+    function togglePay(menuId, row, btn, price) {
+        btn.disabled = true;
+        btn.innerText = '更新中...';
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'toggle_payment', menuId: menuId, row: row })
+        }).then(res => res.json()).then(json => {
+            btn.disabled = false;
+            if(json.status === 'success') {
+                loadOrders(); 
+            } else {
+                alert("失敗");
+                btn.innerText = '重試';
+            }
+        });
+    }
+</script>
+</body>
+</html>
