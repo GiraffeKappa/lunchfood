@@ -8,11 +8,14 @@
         body { font-family: sans-serif; background: #FFF8F0; padding: 20px; max-width: 500px; margin: 0 auto; }
         .header { background: #FF6B35; color: white; padding: 20px; text-align: center; border-radius: 12px 12px 0 0; }
         .card { background: white; padding: 20px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* 菜單項目樣式 */
         .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
         .menu-item:hover { background: #fffbe6; }
         .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
         .price { color: #d32f2f; font-weight: bold; }
         
+        /* 輸入框與按鈕 */
         .form-group { margin-top: 15px; }
         input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         
@@ -20,7 +23,7 @@
         .row { display: flex; gap: 10px; align-items: center; }
         .qty-input { width: 60px; text-align: center; font-weight: bold; }
         
-        /* 購物車樣式 */
+        /* 購物車 */
         .cart-box { margin-top: 20px; border-top: 2px dashed #FF6B35; padding-top: 10px; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #fff0e0; padding: 8px 12px; margin-bottom: 5px; border-radius: 6px; font-size: 0.9rem; }
         .del-item { color: red; cursor: pointer; font-weight: bold; padding: 0 5px; }
@@ -33,6 +36,13 @@
         
         #total-display { text-align: right; font-size: 1.2rem; font-weight: bold; color: #FF6B35; margin-top: 10px; }
         #success-msg { display: none; text-align: center; padding: 30px; color: green; font-weight: bold; font-size: 1.2rem; }
+
+        /* 新增：訂單列表樣式 */
+        .order-list-box { margin-top: 30px; border-top: 5px solid #eee; padding-top: 20px; }
+        .order-list-title { text-align: center; color: #666; font-weight: bold; margin-bottom: 10px; }
+        .existing-order { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px dashed #ddd; font-size: 0.9rem; color: #555; }
+        .existing-order span:first-child { font-weight: bold; color: #333; }
+        .empty-order { text-align: center; color: #999; padding: 10px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -58,7 +68,7 @@
     </div>
 
     <div class="cart-box" id="cart-box" style="display:none;">
-        <h4>🛒 已選餐點</h4>
+        <h4>🛒 您的預選餐點</h4>
         <div id="cart-list"></div>
         <div id="total-display">總金額：$0</div>
     </div>
@@ -69,17 +79,28 @@
     </div>
 
     <button id="submit-btn" class="btn-submit" onclick="submitOrder()">🚀 確認送出訂單</button>
+
+    <div class="order-list-box">
+        <div class="order-list-title">📋 大家點了什麼 (已確認訂單)</div>
+        <div id="current-orders-list">
+            <div class="empty-order">載入中...</div>
+        </div>
+    </div>
 </div>
 
-<div id="success-msg">✅ 訂購成功！<br>已合併寫入資料庫。</div>
+<div id="success-msg">
+    <h2>✅ 訂購成功！</h2>
+    <p>您的訂單已寫入資料庫。</p>
+    <button onclick="location.reload()" style="background:#4CAF50; color:white; padding:10px 20px; border:none; border-radius:5px; margin-top:20px; cursor:pointer;">再幫別人點一份</button>
+</div>
 
 <script>
-    // ⚠️⚠️⚠️ 請確認這裡是最新的 GAS 網址 (結尾是 /exec) ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
+    // ⚠️⚠️⚠️ 請確認這裡填入的是您 GAS 部署後的正確網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
     let currentMenuId = "";
     let selectedItem = null;
-    let cart = []; // 購物車陣列
+    let cart = []; 
 
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
@@ -90,41 +111,82 @@
             return;
         }
 
-        // 讀取菜單
+        // 1. 讀取菜單
         fetch(GAS_URL + "?action=get_menu&id=" + currentMenuId)
         .then(res => res.json())
         .then(data => {
             if(data.status === 'success') {
                 document.getElementById('shop-name').innerText = "🍱 " + data.title;
-                const list = document.getElementById('menu-list');
-                data.items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'menu-item';
-                    div.innerHTML = `<span>${item.name}</span> <span class="price">$${item.price}</span>`;
-                    div.onclick = function() {
-                        document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
-                        div.classList.add('active');
-                        selectedItem = item;
-                        document.getElementById('selected-name').innerText = item.name + ` ($${item.price})`;
-                        document.getElementById('add-btn').disabled = false;
-                        document.getElementById('add-btn').innerText = `➕ 加入 ${item.name}`;
-                    };
-                    list.appendChild(div);
-                });
+                renderMenu(data.items);
+                // 2. 菜單載入成功後，順便載入目前的訂單狀況
+                loadCurrentOrders();
             } else {
                 document.getElementById('shop-name').innerText = "❌ 菜單讀取失敗";
             }
         });
     };
 
+    // 新增：載入目前訂單列表
+    function loadCurrentOrders() {
+        const listDiv = document.getElementById('current-orders-list');
+        
+        fetch(GAS_URL + "?action=get_orders&menuId=" + currentMenuId)
+        .then(res => res.json())
+        .then(data => {
+            listDiv.innerHTML = '';
+            
+            if(data.status === 'success' && data.orders && data.orders.length > 0) {
+                // 翻轉陣列，讓最新的顯示在最上面
+                const reversedOrders = [...data.orders].reverse();
+                
+                reversedOrders.forEach(order => {
+                    const row = document.createElement('div');
+                    row.className = 'existing-order';
+                    
+                    // 顯示格式：姓名 - 品項 (金額)
+                    // 如果有備註，加個 * 號
+                    let noteMark = order.note ? ' <span style="color:#aaa; font-size:0.8em;">(備註)</span>' : '';
+                    
+                    row.innerHTML = `
+                        <span>${order.name}${noteMark}</span>
+                        <span>${order.item} <span style="color:#d32f2f; font-weight:bold;">$${order.price}</span></span>
+                    `;
+                    listDiv.appendChild(row);
+                });
+            } else {
+                listDiv.innerHTML = '<div class="empty-order">目前還沒有人點餐，搶頭香！</div>';
+            }
+        })
+        .catch(err => {
+            listDiv.innerHTML = '<div class="empty-order">載入失敗，請稍後再試</div>';
+        });
+    }
+
+    function renderMenu(items) {
+        const list = document.getElementById('menu-list');
+        list.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'menu-item';
+            div.innerHTML = `<span>${item.name}</span> <span class="price">$${item.price}</span>`;
+            div.onclick = function() {
+                document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
+                div.classList.add('active');
+                selectedItem = item;
+                document.getElementById('selected-name').innerText = item.name + ` ($${item.price})`;
+                document.getElementById('add-btn').disabled = false;
+                document.getElementById('add-btn').innerText = `➕ 加入 ${item.name}`;
+            };
+            list.appendChild(div);
+        });
+    }
+
     function addToCart() {
         if (!selectedItem) return;
-        
         const qtyInput = document.getElementById('quantity');
         let qty = parseInt(qtyInput.value);
         if(isNaN(qty) || qty < 1) qty = 1;
 
-        // 加入購物車
         cart.push({
             name: selectedItem.name,
             price: parseInt(selectedItem.price),
@@ -132,7 +194,6 @@
             subtotal: selectedItem.price * qty
         });
 
-        // 重置輸入
         qtyInput.value = 1;
         renderCart();
     }
@@ -183,25 +244,18 @@
         btn.disabled = true;
         btn.innerText = "傳送中...";
 
-        // 資料合併邏輯
-        // 品項欄位變成：排骨飯x1, 雞腿飯x1
         let finalItemStr = cart.map(i => `${i.name}x${i.qty}`).join(', ');
-        // 總數量 (雖然意義不大，但還是加總一下)
         let totalQty = cart.reduce((acc, cur) => acc + cur.qty, 0);
-        // 總金額
         let totalAmount = cart.reduce((acc, cur) => acc + cur.subtotal, 0);
-
-        // 如果只有一項，讓格式單純一點
-        let priceToSend = totalAmount; // 記錄總價為單價 (為了報表方便)
 
         const payload = {
             action: 'order',
             menuId: currentMenuId,
             name: name,
-            item: finalItemStr,     // 合併後的品項字串
-            price: totalAmount,     // 這裡直接傳總金額當作 price，方便查帳
-            quantity: totalQty,     // 總份數
-            totalAmount: totalAmount, // 總金額
+            item: finalItemStr,
+            price: totalAmount,
+            quantity: totalQty,
+            totalAmount: totalAmount,
             note: note
         };
 
@@ -214,6 +268,7 @@
             if(json.status === 'success') {
                 document.getElementById('order-form').style.display = 'none';
                 document.getElementById('success-msg').style.display = 'block';
+                // 送出成功後，不用再 reload，只要顯示成功訊息即可
             } else {
                 alert("錯誤：" + json.message);
                 btn.disabled = false;
@@ -224,5 +279,3 @@
 </script>
 </body>
 </html>
-
-
