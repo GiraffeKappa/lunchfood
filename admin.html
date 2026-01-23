@@ -3,33 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤴 天龍人訂餐系統後台 (標準版)</title>
+    <title>🤴 天龍人訂餐系統後台 (電話版)</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 500px; }
-        
-        /* 雙分頁樣式 */
         .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; transition: 0.3s; }
-        .tab-btn:hover { background: #f9f9f9; }
         .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; background: #fff; }
-        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content { display: none; }
         .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         h2 { text-align: center; color: #FF6B35; margin-top: 0; }
         label { display: block; margin: 15px 0 5px; font-weight: bold; color: #333; }
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        
         .btn-main { background: #FF6B35; color: white; }
         .btn-sec { background: #e4e6eb; color: #333; }
         .btn-rand { background: #9C27B0; color: white; } 
-
         .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
         .del-btn { background: #ffebee; color: red; width: auto; padding: 0 15px; }
         #result-box { display: none; background: #e8f5e9; padding: 15px; margin-top: 20px; border-radius: 8px; word-break: break-all; }
-        
         .order-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
         .order-info { flex-grow: 1; }
         .order-name { font-weight: bold; font-size: 1.1rem; }
@@ -38,6 +30,9 @@
         .status-unpaid { background: #eee; color: #666; }
         .status-paid { background: #4CAF50; color: white; }
         .summary-box { background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #d84315; }
+        
+        /* 電話顯示樣式 */
+        .shop-tel-tag { display: inline-block; background: #E3F2FD; color: #1976D2; padding: 5px 10px; border-radius: 15px; font-size: 0.9rem; margin-top: 5px; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -56,6 +51,9 @@
 
         <label>🏠 店家名稱</label>
         <input type="text" id="shop-title" placeholder="例如：快樂便當">
+
+        <label>📞 店家電話</label>
+        <input type="text" id="shop-tel" placeholder="例如：02-12345678">
 
         <label>📝 智慧貼上</label>
         <textarea id="paste-area" rows="3" placeholder="排骨飯 100&#10;雞腿飯 110"></textarea>
@@ -78,6 +76,9 @@
         <select id="sheet-select" onchange="loadOrders()">
             <option value="">-- 請選擇 --</option>
         </select>
+        
+        <div id="manage-tel-display" style="text-align:center; margin-top:5px; display:none;"></div>
+
         <button class="btn-sec" onclick="loadSheetList()">🔄 重新整理列表</button>
 
         <div id="summary-area" class="summary-box" style="display:none"></div>
@@ -86,8 +87,8 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請確認這裡是您正確的 GAS 網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
+    // ⚠️⚠️⚠️ 請確認這裡填入的是您 GAS 部署後的正確網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
 
     window.onload = function() {
         fetchPool();
@@ -109,9 +110,7 @@
 
     // --- Part 1: 發布功能 ---
     function fetchPool() {
-        fetch(GAS_URL + "?action=get_pool")
-        .then(res=>res.json())
-        .then(data => {
+        fetch(GAS_URL + "?action=get_pool").then(res=>res.json()).then(data => {
             const sel = document.getElementById('pool-select');
             sel.innerHTML = '<option value="">-- 請選擇 --</option>';
             if(data.data) data.data.forEach(shop => sel.add(new Option(shop.title, JSON.stringify(shop.items))));
@@ -162,6 +161,7 @@
 
     function publish() {
         const title = document.getElementById('shop-title').value;
+        const tel = document.getElementById('shop-tel').value; // 取得電話
         const items = [];
         document.querySelectorAll('.item-row').forEach(r => {
             const n = r.querySelector('.name').value;
@@ -177,7 +177,13 @@
 
         fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'create_menu', title: title, items: items, saveToPool: document.getElementById('save-pool').checked })
+            body: JSON.stringify({ 
+                action: 'create_menu', 
+                title: title, 
+                tel: tel, // 傳送電話
+                items: items, 
+                saveToPool: document.getElementById('save-pool').checked 
+            })
         }).then(res => res.json()).then(json => {
             if(json.status === 'success') {
                 let link = window.location.href.replace('admin.html', '') + 'index.html?id=' + json.menuId;
@@ -205,6 +211,7 @@
                 list.forEach(name => {
                     const parts = name.split('_');
                     const dateStr = parts[0].slice(4, 8);
+                    
                     let displayName = "";
                     if (parts.length >= 3) {
                         const shopName = parts.slice(2).join('_');
@@ -224,12 +231,24 @@
         if(!menuId) return;
 
         const list = document.getElementById('order-list');
+        const telDisplay = document.getElementById('manage-tel-display');
+        
         list.innerHTML = '<p style="text-align:center">載入中...</p>';
+        telDisplay.style.display = 'none';
 
         fetch(GAS_URL + "?action=get_orders&menuId=" + menuId)
         .then(res => res.json())
         .then(data => {
             list.innerHTML = '';
+            
+            // 顯示電話
+            if(data.meta && data.meta.tel) {
+                telDisplay.style.display = 'block';
+                telDisplay.innerHTML = `<span class="shop-tel-tag">📞 店家電話：<a href="tel:${data.meta.tel}" style="color:#1976D2;text-decoration:none;">${data.meta.tel}</a></span>`;
+            } else {
+                telDisplay.style.display = 'none';
+            }
+
             if(data.status === 'success' && data.orders) {
                 let totalMoney = 0;
                 let paidMoney = 0;
@@ -285,4 +304,3 @@
 </script>
 </body>
 </html>
-
