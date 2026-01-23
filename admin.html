@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤴 天龍人訂餐系統後台 (救援版)</title>
+    <title>🤴 天龍人訂餐系統後台</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; max-width: 600px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 500px; }
         .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; transition: 0.3s; }
-        .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; background: #fff; }
+        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #666; }
+        .tab-btn.active { color: #FF6B35; border-bottom: 3px solid #FF6B35; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         h2 { text-align: center; color: #FF6B35; margin-top: 0; }
@@ -85,8 +85,8 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請確認這裡填入的是您 GAS 部署後的正確網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
+    // ⚠️⚠️⚠️ 請將這裡換成您剛剛部署的新網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
 
     window.onload = function() { fetchPool(); };
 
@@ -192,7 +192,6 @@
         });
     }
 
-    // --- Part 2: 查帳功能 ---
     function loadSheetList() {
         const sel = document.getElementById('sheet-select');
         sel.innerHTML = '<option>載入中...</option>';
@@ -204,20 +203,12 @@
                 const list = [...data.data].reverse();
                 list.forEach(name => {
                     const parts = name.split('_');
-                    let displayName = name; // 預設直接顯示完整檔名
-                    
-                    // 嘗試優化顯示
+                    let displayName = name;
                     if (parts.length >= 2) {
-                         const dateStr = parts[0].slice(4, 8); // 取月日
-                         let shopName = name;
-                         if (parts.length >= 3) {
-                             shopName = parts.slice(2).join('_'); // 有店名
-                         } else {
-                             shopName = parts[1]; // 舊格式，可能是時間
-                         }
+                         const dateStr = parts[0].slice(4, 8);
+                         let shopName = parts.length >= 3 ? parts.slice(2).join('_') : parts[1];
                          displayName = `${shopName} (${dateStr})`;
                     }
-
                     sel.add(new Option(displayName, name));
                 });
             }
@@ -239,7 +230,6 @@
         .then(data => {
             list.innerHTML = '';
             
-            // 顯示電話
             if(data.meta && data.meta.tel) {
                 telDisplay.style.display = 'block';
                 telDisplay.innerHTML = `<span class="shop-tel-tag">📞 店家電話：<a href="tel:${data.meta.tel}" style="color:#1976D2;text-decoration:none;">${data.meta.tel}</a></span>`;
@@ -250,10 +240,7 @@
             if(data.status === 'success' && data.orders) {
                 let totalMoney = 0;
                 let paidMoney = 0;
-                let count = 0;
-
                 data.orders.forEach(order => {
-                    count++;
                     let price = parseInt(order.price) || 0;
                     totalMoney += price;
                     if(order.paid) paidMoney += price;
@@ -278,7 +265,7 @@
                 summary.style.display = 'block';
                 summary.innerHTML = `總金額：$${totalMoney} / 已收：$${paidMoney} / 未收：$${totalMoney - paidMoney}`;
                 
-                if(count === 0) list.innerHTML = '<p style="text-align:center;color:#666">目前無訂單</p>';
+                if(data.orders.length === 0) list.innerHTML = '<p style="text-align:center;color:#666">目前無訂單</p>';
             } else {
                  list.innerHTML = '<p style="text-align:center;color:red">讀取失敗</p>';
             }
