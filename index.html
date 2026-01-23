@@ -8,41 +8,31 @@
         body { font-family: sans-serif; background: #FFF8F0; padding: 20px; max-width: 500px; margin: 0 auto; }
         .header { background: #FF6B35; color: white; padding: 20px; text-align: center; border-radius: 12px 12px 0 0; }
         .card { background: white; padding: 20px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        
-        /* 菜單項目樣式 */
         .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
         .menu-item:hover { background: #fffbe6; }
         .menu-item.active { background: #ffe0b2; border-left: 5px solid #FF6B35; }
         .price { color: #d32f2f; font-weight: bold; }
-        
-        /* 輸入框與按鈕 */
         .form-group { margin-top: 15px; }
         input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        
         .control-panel { background: #fafafa; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; }
         .row { display: flex; gap: 10px; align-items: center; }
         .qty-input { width: 60px; text-align: center; font-weight: bold; }
-        
-        /* 購物車 */
         .cart-box { margin-top: 20px; border-top: 2px dashed #FF6B35; padding-top: 10px; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #fff0e0; padding: 8px 12px; margin-bottom: 5px; border-radius: 6px; font-size: 0.9rem; }
         .del-item { color: red; cursor: pointer; font-weight: bold; padding: 0 5px; }
-
         .btn-add { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
         .btn-add:disabled { background: #ccc; }
-
         .btn-submit { width: 100%; padding: 15px; background: #333; color: #F7C800; border: none; border-radius: 50px; font-weight: bold; font-size: 18px; margin-top: 20px; cursor: pointer; }
         .btn-submit:disabled { background: #ccc; }
-        
         #total-display { text-align: right; font-size: 1.2rem; font-weight: bold; color: #FF6B35; margin-top: 10px; }
         #success-msg { display: none; text-align: center; padding: 30px; color: green; font-weight: bold; font-size: 1.2rem; }
-
-        /* 新增：訂單列表樣式 */
+        
         .order-list-box { margin-top: 30px; border-top: 5px solid #eee; padding-top: 20px; }
         .order-list-title { text-align: center; color: #666; font-weight: bold; margin-bottom: 10px; }
         .existing-order { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px dashed #ddd; font-size: 0.9rem; color: #555; }
         .existing-order span:first-child { font-weight: bold; color: #333; }
         .empty-order { text-align: center; color: #999; padding: 10px; font-style: italic; }
+        .user-tel-display { text-align: center; font-size: 0.9rem; margin-bottom: 10px; color: #1976D2; display: none; }
     </style>
 </head>
 <body>
@@ -81,7 +71,8 @@
     <button id="submit-btn" class="btn-submit" onclick="submitOrder()">🚀 確認送出訂單</button>
 
     <div class="order-list-box">
-        <div class="order-list-title">📋 大家點了什麼 (已確認訂單)</div>
+        <div class="order-list-title">📋 大家點了什麼</div>
+        <div id="user-shop-tel" class="user-tel-display"></div>
         <div id="current-orders-list">
             <div class="empty-order">載入中...</div>
         </div>
@@ -95,8 +86,8 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 請確認這裡填入的是您 GAS 部署後的正確網址 ⚠️⚠️⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxPpLknsRM3J8S57MbhNRUhST9CQfqyxjKoaGT1ePz_lUAlE-XMTjEx-YEN-BeyfIDrKg/exec";
+    // ⚠️⚠️⚠️ 請將這裡換成您剛剛部署的新網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzCUFGnwpcfsjg6aL7fYHyzglS9MJ18FBbgzNQh42e6KvAVS7-jmRZnEiBcDLSA2TGbEA/exec";
 
     let currentMenuId = "";
     let selectedItem = null;
@@ -111,14 +102,12 @@
             return;
         }
 
-        // 1. 讀取菜單
         fetch(GAS_URL + "?action=get_menu&id=" + currentMenuId)
         .then(res => res.json())
         .then(data => {
             if(data.status === 'success') {
                 document.getElementById('shop-name').innerText = "🍱 " + data.title;
                 renderMenu(data.items);
-                // 2. 菜單載入成功後，順便載入目前的訂單狀況
                 loadCurrentOrders();
             } else {
                 document.getElementById('shop-name').innerText = "❌ 菜單讀取失敗";
@@ -126,27 +115,24 @@
         });
     };
 
-    // 新增：載入目前訂單列表
     function loadCurrentOrders() {
         const listDiv = document.getElementById('current-orders-list');
+        const telDiv = document.getElementById('user-shop-tel');
         
         fetch(GAS_URL + "?action=get_orders&menuId=" + currentMenuId)
         .then(res => res.json())
         .then(data => {
             listDiv.innerHTML = '';
-            
+            if(data.meta && data.meta.tel) {
+                telDiv.style.display = 'block';
+                telDiv.innerHTML = `📞 店家電話：<a href="tel:${data.meta.tel}" style="color:#1976D2;">${data.meta.tel}</a>`;
+            }
             if(data.status === 'success' && data.orders && data.orders.length > 0) {
-                // 翻轉陣列，讓最新的顯示在最上面
                 const reversedOrders = [...data.orders].reverse();
-                
                 reversedOrders.forEach(order => {
                     const row = document.createElement('div');
                     row.className = 'existing-order';
-                    
-                    // 顯示格式：姓名 - 品項 (金額)
-                    // 如果有備註，加個 * 號
                     let noteMark = order.note ? ' <span style="color:#aaa; font-size:0.8em;">(備註)</span>' : '';
-                    
                     row.innerHTML = `
                         <span>${order.name}${noteMark}</span>
                         <span>${order.item} <span style="color:#d32f2f; font-weight:bold;">$${order.price}</span></span>
@@ -156,9 +142,6 @@
             } else {
                 listDiv.innerHTML = '<div class="empty-order">目前還沒有人點餐，搶頭香！</div>';
             }
-        })
-        .catch(err => {
-            listDiv.innerHTML = '<div class="empty-order">載入失敗，請稍後再試</div>';
         });
     }
 
@@ -193,7 +176,6 @@
             qty: qty,
             subtotal: selectedItem.price * qty
         });
-
         qtyInput.value = 1;
         renderCart();
     }
@@ -202,29 +184,19 @@
         const list = document.getElementById('cart-list');
         const cartBox = document.getElementById('cart-box');
         list.innerHTML = '';
-
         if (cart.length === 0) {
             cartBox.style.display = 'none';
             return;
         }
-
         cartBox.style.display = 'block';
         let total = 0;
-
         cart.forEach((item, index) => {
             total += item.subtotal;
             const div = document.createElement('div');
             div.className = 'cart-item';
-            div.innerHTML = `
-                <span>${item.name} x${item.qty}</span>
-                <span style="display:flex; align-items:center;">
-                    $${item.subtotal} 
-                    <span class="del-item" onclick="removeFromCart(${index})">×</span>
-                </span>
-            `;
+            div.innerHTML = `<span>${item.name} x${item.qty}</span><span style="display:flex; align-items:center;">$${item.subtotal} <span class="del-item" onclick="removeFromCart(${index})">×</span></span>`;
             list.appendChild(div);
         });
-
         document.getElementById('total-display').innerText = `總金額：$${total}`;
     }
 
@@ -236,7 +208,6 @@
     function submitOrder() {
         const name = document.getElementById('username').value;
         const note = document.getElementById('note').value;
-
         if(!name) return alert("請輸入名字！");
         if(cart.length === 0) return alert("購物車是空的，請先加入餐點！");
 
@@ -268,7 +239,6 @@
             if(json.status === 'success') {
                 document.getElementById('order-form').style.display = 'none';
                 document.getElementById('success-msg').style.display = 'block';
-                // 送出成功後，不用再 reload，只要顯示成功訊息即可
             } else {
                 alert("錯誤：" + json.message);
                 btn.disabled = false;
